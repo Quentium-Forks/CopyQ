@@ -37,8 +37,6 @@ On **Ubuntu** you can install all build dependencies with:
       cmake \
       extra-cmake-modules \
       git \
-      libkf6guiaddons \
-      libkf6guiaddons-dev \
       libqca-qt6-2 \
       libqca-qt6-dev \
       libqca-qt6-plugins \
@@ -59,6 +57,11 @@ On **Ubuntu** you can install all build dependencies with:
       qt6-wayland-dev \
       qt6-wayland-dev-tools \
       qtkeychain-qt6-dev
+
+On Ubuntu 25.04 and newer, you can also install `KF6` packages:
+    sudo apt install \
+      libkf6guiaddons \
+      libkf6guiaddons-dev \
 
 Fedora / RHEL / Centos
 ^^^^^^^^^^^^^^^^^^^^^^
