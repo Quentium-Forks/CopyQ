@@ -2,16 +2,15 @@
 set -e
 
 distros=(
-    jammy
+    # jammy
     noble
-    plucky
 )
 
 sed -i 's/quilt/native/' 'debian/source/format'
-echo 9 > 'debian/compat'
-rm -f debian/watch
 
 for distro in "${distros[@]}"; do
     ./utils/debian/update_changelog.sh "$distro"
-    debuild -S -d
+    debuild --no-lintian -S --no-sign
 done
+
+sed -i 's/native/quilt/' 'debian/source/format'
