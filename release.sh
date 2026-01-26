@@ -9,20 +9,20 @@ export VERSION=$VERSION
 rm -rf build release translations/*.qm # rpm/BUILD rpm/BUILDROOT rpm/*RPMS rpm/SOURCES debug*.list elfbins.list
 
 # build
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DWITH_NATIVE_NOTIFICATIONS=OFF
 cmake --build build -j $(nproc)
-strip -s build/copyq/copyq
+strip -s build/copyq
 
 # assets
 mkdir -p release/$DIR
-cp -r src plugins qxt shared translations CMakeLists.txt debian release/$DIR
+cp -r src plugins qxt shared translations CMakeLists.txt debian AUTHORS release/$DIR
 
 # translations
 export QT_SELECT=qt6
 # Expand PATH to find lupdate & lrelease
 export PATH="/usr/lib/$QT_SELECT/bin:$PATH"
-# lupdate src/ plugins/*/*.{cpp,h,ui} -ts translations/*.ts
-# lrelease translations/*.ts
+lupdate src/ plugins/*/*.{cpp,h,ui} -ts translations/*.ts
+lrelease translations/*.ts
 mkdir -p release/$DIR/copyq/translations
 cp translations/*.qm release/$DIR/copyq/translations
 
@@ -37,7 +37,7 @@ tar -czf release/$DIR.tar.gz -C release $DIR
 # chmod +x appimagetool-$ARCH.AppImage
 
 # # appimage
-# cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+# cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DWITH_NATIVE_NOTIFICATIONS=OFF
 # DESTDIR=../release/$DIR cmake --build build --target install
 # ./appimagetool-$ARCH.AppImage -s deploy release/$DIR/usr/share/applications/copyq.desktop
 # ./appimagetool-$ARCH.AppImage release/$DIR
