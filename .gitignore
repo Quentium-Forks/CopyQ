@@ -47,6 +47,13 @@ CMakeLists.txt.user*
 *.pyc
 *.dmg
 /build
+/release
+shared/rpm/BUILD/
+shared/rpm/BUILDROOT/
+shared/rpm/*RPMS/
+shared/rpm/SOURCES/
+debug*.list
+elfbins.list
 *.qm
 
 # Generated Sphinx files
