@@ -1,23 +1,18 @@
-Name:		copyq
-Version:	13.0.0
-Release:	1%{?dist}
-Summary:	Advanced clipboard manager
+Name:       copyq
+Version:    13.0.0
+Release:    1%{?dist}
+Summary:    Advanced clipboard manager
 
-License:	GPLv3+
-URL:		https://hluk.github.io/CopyQ/
-Source0:	%{name}-%{version}.tar.gz
-
-# Following line used to track qt5 private api usage
-%{?_qt5:Requires: %{_qt5}%{?_isa} = %{_qt5_version}}
+License:    GPLv3+
+URL:        https://hluk.github.io/CopyQ/
+Source0:    %{name}-%{version}.tar.gz
 
 %description
 CopyQ is advanced clipboard manager with searchable and editable history with
 support for image formats, command line control and more.
 
 %prep
-chmod 644 %{SOURCE0}
 %setup -q
-
 
 %build
 cmake -S . -B build \
