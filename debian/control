@@ -6,6 +6,7 @@ Build-Depends:
  cmake,
  debhelper (>= 12),
  extra-cmake-modules,
+ libwayland-dev,
  libxfixes-dev,
  libxtst-dev
 Standards-Version: 4.7.2

@@ -38,6 +38,8 @@ On **Ubuntu** you can install all build dependencies with:
       extra-cmake-modules \
       git \
       libqt6svg6-dev \
+      libqt6waylandclient6 \
+      libwayland-dev \
       libxfixes-dev \
       libxtst-dev \
       qt6-base-dev \
