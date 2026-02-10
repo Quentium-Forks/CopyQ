@@ -7,8 +7,7 @@ Build-Depends:
  debhelper (>= 12),
  extra-cmake-modules,
  libxfixes-dev,
- libxtst-dev,
- libwayland-dev
+ libxtst-dev
 Standards-Version: 4.7.2
 Vcs-Browser: https://github.com/hluk/CopyQ
 Vcs-Git: https://github.com/hluk/CopyQ.git
