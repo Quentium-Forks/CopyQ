@@ -37,13 +37,9 @@ On **Ubuntu** you can install all build dependencies with:
       cmake \
       extra-cmake-modules \
       git \
-      libqca-qt6-2 \
       libqca-qt6-dev \
       libqca-qt6-plugins \
-      libqt6svg6 \
       libqt6svg6-dev \
-      libqt6waylandclient6 \
-      libwayland-dev \
       libxfixes-dev \
       libxtst-dev \
       qt6-base-dev \

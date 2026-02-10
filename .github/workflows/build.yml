@@ -1,0 +1,101 @@
+name: Build CopyQ Application
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build App
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, ubuntu-22.04, ubuntu-22.04-arm]
+        include:
+          - os: ubuntu-24.04
+            codename: noble
+            # qt_version: 6.4.2
+            # qt_arch: gcc_64
+          - os: ubuntu-24.04-arm
+            codename: noble-arm
+            # qt_version: 6.7.0
+            # qt_arch: linux_gcc_arm64
+          - os: ubuntu-22.04
+            codename: jammy
+            # qt_version: 6.2.4
+            # qt_arch: gcc_64
+          - os: ubuntu-22.04-arm
+            codename: jammy-arm
+            # qt_version: 6.7.0
+            # qt_arch: linux_gcc_arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Update package repositories
+        run: sudo apt-get update
+
+      # - name: Install Qt
+      #   uses: jurplel/install-qt-action@v4
+      #   with:
+      #     version: ${{ matrix.qt_version }}
+      #     target: desktop
+      #     arch: ${{ matrix.qt_arch }}
+      #     modules: qtcharts
+
+      - name: Install libraries
+        run: |
+          sudo apt-get install -y libqca-qt6-dev libqca-qt6-plugins libqt6svg6-dev libxfixes-dev libxtst-dev qt6-base-dev qt6-base-dev-tools qt6-base-private-dev qt6-declarative-dev qt6-l10n-tools qt6-tools-dev qt6-tools-dev-tools qt6-wayland qt6-wayland-dev qt6-wayland-dev-tools qtkeychain-qt6-dev
+          sudo apt-get install -y libfuse2
+
+      - name: Install build tools
+        run: |
+          sudo apt-get install -y cmake extra-cmake-modules dh-make devscripts build-essential lintian
+
+      - name: Build and make release
+        run: |
+          bash ${{ github.workspace }}/release.sh
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: copyq-${{ matrix.codename }}
+          path: |
+            ${{ github.workspace }}/release/copyq_*.deb
+            ${{ github.workspace }}/release/copyq-*.rpm
+            ${{ github.workspace }}/release/CopyQ-*.AppImage
+
+      - name: Update debian files
+        run: |
+          sed -i "s/^Architecture:\s\+.*$/Architecture: any/g" ${{ github.workspace }}/debian/control
+
+      - name: Display debian folder
+        run: |
+          echo "Debian folder content:"
+          ls -la ${{ github.workspace }}/debian/
+          echo "Release folder content:"
+          ls -la ${{ github.workspace }}/release/
+          echo "Control file content:"
+          cat ${{ github.workspace }}/debian/control
+          echo "Changelog file content:"
+          cat ${{ github.workspace }}/debian/changelog
+
+      - name: Publish PPA package
+        uses: yuezk/publish-ppa-package@main
+        if: github.event_name != 'workflow_dispatch' && matrix.codename == 'jammy'
+        with:
+          tarball: ${{ github.workspace }}/release/copyq-*.tar.gz
+          debian_dir: ${{ github.workspace }}/debian/
+          repository: "quentiumyt/copyq"
+          deb_email: "pro@quentium.fr"
+          deb_fullname: "Quentin Lienhardt"
+          gpg_private_key: ${{ secrets.PPA_GPG_PRIVATE_KEY }}
+          gpg_passphrase: ${{ secrets.PPA_GPG_PASSPHRASE }}
+          series: "noble jammy"
+          new_version_template: "{VERSION}-{REVISION}+{SERIES}"
+          keep_changelog: true
