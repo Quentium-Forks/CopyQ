@@ -54,7 +54,7 @@ jobs:
           sudo apt-get install -y libfuse2
 
       - name: Install libraries for noble
-        if: matrix.codename == 'noble'
+        if: matrix.codename == 'noble' || matrix.codename == 'noble-arm'
         run: |
           sudo apt-get install -y libqca-qt6-dev libqca-qt6-plugins
 

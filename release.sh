@@ -8,7 +8,7 @@ export VERSION=$VERSION
 # cleanup
 rm -rf build release translations/*.qm shared/rpm/BUILD shared/rpm/BUILDROOT shared/rpm/*RPMS shared/rpm/SOURCES debug*.list elfbins.list
 
-if [ "$1" == "jammy" ]; then
+if [ "$1" == "jammy" ] || [ "$1" == "jammy-arm" ]; then
     EXTRA_CMAKE_FLAGS="-DWITH_QCA_ENCRYPTION=OFF"
 fi
 
