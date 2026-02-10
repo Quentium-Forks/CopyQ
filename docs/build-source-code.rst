@@ -107,6 +107,7 @@ Build the source code with CMake and make or using an IDE of your choice (see ne
 
     cd CopyQ
     cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local .
+    # Add -DWITH_QCA_ENCRYPTION=OFF for Ubuntu systems without `QCA` packages
     # Add -DWITH_NATIVE_NOTIFICATIONS=OFF for Ubuntu systems without `KF6` packages
     make
     make install
