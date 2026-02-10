@@ -25,8 +25,8 @@ fi
 cmake -S . -B build \
     -DCMAKE_INSTALL_PREFIX=%{_prefix} \
     -DPLUGIN_INSTALL_PREFIX=%{_libdir}/%{name}/plugins \
-    -DDATA_INSTALL_PREFIX=%{_prefix}/share \
-    -DTRANSLATION_INSTALL_PREFIX=%{_prefix}/share/%{name}/locale \
+    -DDATA_INSTALL_PREFIX=%{_datadir} \
+    -DTRANSLATION_INSTALL_PREFIX=%{_datadir}/%{name}/locale \
     -DCMAKE_BUILD_TYPE=Release \
     -DWITH_NATIVE_NOTIFICATIONS=OFF \
     $EXTRA_CMAKE_FLAGS
