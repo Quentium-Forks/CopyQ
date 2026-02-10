@@ -8,10 +8,16 @@ export VERSION=$VERSION
 # cleanup
 rm -rf build release translations/*.qm shared/rpm/BUILD shared/rpm/BUILDROOT shared/rpm/*RPMS shared/rpm/SOURCES debug*.list elfbins.list
 
+if [ "$1" == "jammy" ]; then
+    EXTRA_CMAKE_FLAGS="-DWITH_QCA_ENCRYPTION=OFF"
+fi
+
 # build
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DWITH_NATIVE_NOTIFICATIONS=OFF
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DWITH_NATIVE_NOTIFICATIONS=OFF $EXTRA_CMAKE_FLAGS
 cmake --build build -j $(nproc)
 strip -s build/copyq
+
+exit 0
 
 # assets
 mkdir -p release/$DIR
@@ -37,7 +43,7 @@ wget -qc https://github.com/$(wget -q https://github.com/probonopd/go-appimage/r
 chmod +x appimagetool-$ARCH.AppImage
 
 # appimage
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DWITH_NATIVE_NOTIFICATIONS=OFF
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DWITH_NATIVE_NOTIFICATIONS=OFF $EXTRA_CMAKE_FLAGS
 DESTDIR=../release/$DIR cmake --build build --target install -j $(nproc)
 ./appimagetool-$ARCH.AppImage -s deploy release/$DIR/usr/share/applications/com.github.hluk.copyq.desktop
 ./appimagetool-$ARCH.AppImage release/$DIR
