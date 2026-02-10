@@ -41,6 +41,7 @@ wget -qc https://github.com/$(wget -q https://github.com/probonopd/go-appimage/r
 chmod +x appimagetool-$ARCH.AppImage
 
 # appimage
+echo "-----AppImage"
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DWITH_NATIVE_NOTIFICATIONS=OFF $EXTRA_CMAKE_FLAGS
 DESTDIR=../release/$DIR cmake --build build --target install -j $(nproc)
 ./appimagetool-$ARCH.AppImage -s deploy release/$DIR/usr/share/applications/com.github.hluk.copyq.desktop
@@ -50,6 +51,7 @@ mv copyq-$VERSION-$ARCH.AppImage release
 rm appimagetool-$ARCH.AppImage
 
 # debian package
+echo "-----Debian"
 cd release/$DIR
 # Export CMake prefix path for debuild using aqtinstall
 if [ -z "$QT_PLUGIN_PATH" ]; then
@@ -64,6 +66,7 @@ debuild --preserve-envvar=CMAKE_PREFIX_PATH \
 cd ../..
 
 # rpm package
+echo "-----RPM"
 mkdir -p shared/rpm/SOURCES
 cp release/$DIR.tar.gz shared/rpm/SOURCES
 # Change architecture
