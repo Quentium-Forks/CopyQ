@@ -66,7 +66,6 @@ On Ubuntu 25.04 and newer, you can also install `KF6` packages:
 ::
 
     sudo apt install \
-      libkf6guiaddons \
       libkf6guiaddons-dev
 
 Fedora / RHEL / CentOS
