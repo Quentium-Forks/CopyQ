@@ -18,9 +18,9 @@ override_dh_auto_configure:
 	fi; \
 	# Check if kf6 dependencies are installed \
 	if dpkg -s libkf6guiaddons-dev > /dev/null 2>&1; then \
-		EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=ON"; \
+		EXTRA_FLAGS="$$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=ON"; \
 	else \
-		EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=OFF"; \
+		EXTRA_FLAGS="$$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=OFF"; \
 	fi; \
 	dh_auto_configure -- \
 			-DCMAKE_VERBOSE_MAKEFILE=ON \
