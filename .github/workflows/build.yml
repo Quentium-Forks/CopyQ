@@ -11,7 +11,7 @@ jobs:
     name: Build App
     strategy:
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, ubuntu-22.04, ubuntu-22.04-arm]
+        os: [ubuntu-24.04, ubuntu-24.04-arm] #, ubuntu-22.04, ubuntu-22.04-arm]
         include:
           - os: ubuntu-24.04
             codename: noble
