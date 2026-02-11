@@ -31,9 +31,7 @@ fi
 cmake -S . -B build \
     -DCMAKE_INSTALL_PREFIX=%{_prefix} \
     -DPLUGIN_INSTALL_PREFIX=%{_libdir}/%{name}/plugins \
-    -DDATA_INSTALL_PREFIX=%{_datadir} \
     -DTRANSLATION_INSTALL_PREFIX=%{_datadir}/%{name}/locale \
-    -DCMAKE_INSTALL_MANDIR=%{_mandir} \
     -DCMAKE_BUILD_TYPE=Release \
     $EXTRA_CMAKE_FLAGS
 
