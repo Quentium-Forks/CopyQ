@@ -46,7 +46,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DWIT
 DESTDIR=../release/$DIR cmake --build build --target install -j $(nproc)
 ./appimagetool-$ARCH.AppImage -s deploy release/$DIR/usr/share/applications/com.github.hluk.copyq.desktop
 ./appimagetool-$ARCH.AppImage release/$DIR
-mv copyq-$VERSION-$ARCH.AppImage release
+mv CopyQ-$VERSION-$ARCH.AppImage release
 
 rm appimagetool-$ARCH.AppImage
 
