@@ -30,6 +30,7 @@ cmake_install.cmake
 /src/qrc_copyq.cxx
 /src/translations.qrc
 /src/qrc_translations.cxx
+/copyq.lang
 
 moc_*
 ui_*
