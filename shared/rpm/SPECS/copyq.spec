@@ -17,15 +17,15 @@ support for image formats, command line control and more.
 %build
 # Check if qca dependencies are installed
 if rpm -q qca-qt6-devel; then
-    EXTRA_CMAKE_FLAGS="-DWITH_QCA_ENCRYPTION=ON"
+    EXTRA_FLAGS="-DWITH_QCA_ENCRYPTION=ON"
 else
-    EXTRA_CMAKE_FLAGS="-DWITH_QCA_ENCRYPTION=OFF"
+    EXTRA_FLAGS="-DWITH_QCA_ENCRYPTION=OFF"
 fi
 # Check if kf6 dependencies are installed
 if rpm -q kf6-kguiaddons-devel; then
-    EXTRA_CMAKE_FLAGS="$EXTRA_CMAKE_FLAGS -DWITH_NATIVE_NOTIFICATIONS=ON"
+    EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=ON"
 else
-    EXTRA_CMAKE_FLAGS="$EXTRA_CMAKE_FLAGS -DWITH_NATIVE_NOTIFICATIONS=OFF"
+    EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=OFF"
 fi
 
 cmake -S . -B build \
@@ -33,7 +33,7 @@ cmake -S . -B build \
     -DPLUGIN_INSTALL_PREFIX=%{_libdir}/%{name}/plugins \
     -DTRANSLATION_INSTALL_PREFIX=%{_datadir}/%{name}/locale \
     -DCMAKE_BUILD_TYPE=Release \
-    $EXTRA_CMAKE_FLAGS
+    $EXTRA_FLAGS
 
 cmake --build build -j $(nproc)
 

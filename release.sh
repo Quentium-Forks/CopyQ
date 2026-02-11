@@ -10,19 +10,19 @@ rm -rf build release translations/*.qm shared/rpm/BUILD shared/rpm/BUILDROOT sha
 
 # Check if qca dependencies are installed
 if dpkg -s libqca-qt6-dev > /dev/null 2>&1; then
-    EXTRA_CMAKE_FLAGS="-DWITH_QCA_ENCRYPTION=ON"
+    EXTRA_FLAGS="-DWITH_QCA_ENCRYPTION=ON"
 else
-    EXTRA_CMAKE_FLAGS="-DWITH_QCA_ENCRYPTION=OFF"
+    EXTRA_FLAGS="-DWITH_QCA_ENCRYPTION=OFF"
 fi
 # Check if kf6 dependencies are installed
-if dpkg -s kf6-kguiaddons-devel > /dev/null 2>&1; then
-    EXTRA_CMAKE_FLAGS="$EXTRA_CMAKE_FLAGS -DWITH_NATIVE_NOTIFICATIONS=ON"
+if dpkg -s libkf6guiaddons-dev > /dev/null 2>&1; then
+    EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=ON"
 else
-    EXTRA_CMAKE_FLAGS="$EXTRA_CMAKE_FLAGS -DWITH_NATIVE_NOTIFICATIONS=OFF"
+    EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=OFF"
 fi
 
 # build
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr $EXTRA_CMAKE_FLAGS
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr $EXTRA_FLAGS
 cmake --build build -j $(nproc)
 strip -s build/copyq
 
