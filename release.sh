@@ -8,12 +8,21 @@ export VERSION=$VERSION
 # cleanup
 rm -rf build release translations/*.qm shared/rpm/BUILD shared/rpm/BUILDROOT shared/rpm/*RPMS shared/rpm/SOURCES debug*.list elfbins.list
 
-if [ "$1" == "jammy" ] || [ "$1" == "jammy-arm" ]; then
+# Check if qca dependencies are installed
+if dpkg -s libqca-qt6-dev > /dev/null 2>&1; then
+    EXTRA_CMAKE_FLAGS="-DWITH_QCA_ENCRYPTION=ON"
+else
     EXTRA_CMAKE_FLAGS="-DWITH_QCA_ENCRYPTION=OFF"
+fi
+# Check if kf6 dependencies are installed
+if dpkg -s kf6-kguiaddons-devel > /dev/null 2>&1; then
+    EXTRA_CMAKE_FLAGS="$EXTRA_CMAKE_FLAGS -DWITH_NATIVE_NOTIFICATIONS=ON"
+else
+    EXTRA_CMAKE_FLAGS="$EXTRA_CMAKE_FLAGS -DWITH_NATIVE_NOTIFICATIONS=OFF"
 fi
 
 # build
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DWITH_NATIVE_NOTIFICATIONS=OFF $EXTRA_CMAKE_FLAGS
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release $EXTRA_CMAKE_FLAGS
 cmake --build build -j $(nproc)
 strip -s build/copyq
 
@@ -42,7 +51,7 @@ chmod +x appimagetool-$ARCH.AppImage
 
 # appimage
 echo "-----AppImage"
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DWITH_NATIVE_NOTIFICATIONS=OFF $EXTRA_CMAKE_FLAGS
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr $EXTRA_CMAKE_FLAGS
 DESTDIR=../release/$DIR cmake --build build --target install -j $(nproc)
 ./appimagetool-$ARCH.AppImage -s deploy release/$DIR/usr/share/applications/com.github.hluk.copyq.desktop
 ./appimagetool-$ARCH.AppImage release/$DIR

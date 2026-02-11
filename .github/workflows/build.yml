@@ -64,7 +64,7 @@ jobs:
 
       - name: Build and make release
         run: |
-          bash ${{ github.workspace }}/release.sh ${{ matrix.codename }}
+          bash ${{ github.workspace }}/release.sh
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v6

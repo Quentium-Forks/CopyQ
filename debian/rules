@@ -8,6 +8,8 @@ export DEB_LDFLAGS_MAINT_APPEND += -Wl,--as-needed
 
 %:
 	dh $@
+	
+# TODO: handle the case where rules are built with different debian/ubuntu versions
 
 override_dh_auto_configure:
 	dh_auto_configure -- \
