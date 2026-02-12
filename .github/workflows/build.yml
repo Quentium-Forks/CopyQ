@@ -96,7 +96,7 @@ jobs:
         with:
           tarball: ${{ github.workspace }}/release/copyq-*.tar.gz
           debian_dir: ${{ github.workspace }}/debian/
-          repository: "quentiumyt/copyq"
+          repository: "quentiumyt/copyq-test"
           deb_email: "pro@quentium.fr"
           deb_fullname: "Quentin Lienhardt"
           gpg_private_key: ${{ secrets.PPA_GPG_PRIVATE_KEY }}
