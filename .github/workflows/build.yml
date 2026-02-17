@@ -92,7 +92,7 @@ jobs:
 
       - name: Publish PPA package
         uses: yuezk/publish-ppa-package@main
-        if: github.event_name != 'workflow_dispatch' && matrix.codename == 'jammy'
+        if: matrix.codename == 'jammy'
         with:
           tarball: ${{ github.workspace }}/release/copyq-*.tar.gz
           debian_dir: ${{ github.workspace }}/debian/
