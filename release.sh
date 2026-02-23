@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION=13.0.0
+VERSION=13.0.1
 DIR=copyq-$VERSION
 ARCH=$(uname -m)
 ARCH_DPKG=$(dpkg --print-architecture)
