@@ -1,4 +1,4 @@
-set(copyq_version "13.0.2")
+set(copyq_version "13.0.3")
 
 set(copyq_github_sha "$ENV{GITHUB_SHA}")
 if (copyq_github_sha)

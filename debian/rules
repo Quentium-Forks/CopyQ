@@ -10,7 +10,6 @@ export DEB_LDFLAGS_MAINT_APPEND += -Wl,--as-needed
 	dh $@
 
 override_dh_auto_configure:
-	env | grep QT
 	dpkg-buildflags --get CXXFLAGS
 	export DEB_CXXFLAGS_MAINT_APPEND=
 	export DEB_CFLAGS_MAINT_APPEND=
