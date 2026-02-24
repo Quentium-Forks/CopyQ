@@ -10,6 +10,10 @@ export DEB_LDFLAGS_MAINT_APPEND += -Wl,--as-needed
 	dh $@
 
 override_dh_auto_configure:
+	env | grep QT
+	dpkg-buildflags --get CXXFLAGS
+	export DEB_CXXFLAGS_MAINT_APPEND=
+	export DEB_CFLAGS_MAINT_APPEND=
 	# Check if qca dependencies are installed
 	if dpkg -s libqca-qt6-dev > /dev/null 2>&1; then \
 		EXTRA_FLAGS="-DWITH_QCA_ENCRYPTION=ON"; \
