@@ -125,9 +125,10 @@ foreach (copyq_qt_module ${copyq_qt_modules})
     list(APPEND copyq_LIBRARIES ${copyq_qt}::${copyq_qt_module})
 endforeach()
 
+set_target_properties(copyq-common PROPERTIES COMPILE_DEFINITIONS "${copyq_DEFINITIONS}")
 set_target_properties(${COPYQ_EXECUTABLE_NAME} PROPERTIES LINK_FLAGS "${copyq_LINK_FLAGS}")
-target_link_libraries(${COPYQ_EXECUTABLE_NAME} ${copyq_LIBRARIES})
 target_link_libraries(copyq-common ${copyq_LIBRARIES})
+target_link_libraries(${COPYQ_EXECUTABLE_NAME} ${copyq_LIBRARIES})
 target_include_directories(copyq-common PRIVATE ${CMAKE_CURRENT_BINARY_DIR} .)
 target_include_directories(${COPYQ_EXECUTABLE_NAME} PRIVATE .)
 

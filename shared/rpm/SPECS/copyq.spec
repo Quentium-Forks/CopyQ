@@ -1,5 +1,5 @@
 Name:       copyq
-Version:    13.0.4
+Version:    13.0.5
 Release:    1%{?dist}
 Summary:    Advanced clipboard manager
 
