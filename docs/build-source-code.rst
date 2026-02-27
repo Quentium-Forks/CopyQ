@@ -26,9 +26,9 @@ The build requires:
 - `CMake <https://cmake.org/download/>`__
 - `Qt <https://download.qt.io/archive/qt/>`__
 
-Ubuntu
-^^^^^^
-On **Ubuntu** you can install all build dependencies with:
+Debian / Ubuntu
+^^^^^^^^^^^^^^^
+On **Debian** and derivatives you can install all build dependencies with:
 
 ::
 
@@ -55,7 +55,7 @@ On **Ubuntu** you can install all build dependencies with:
       qtkeychain-qt6-dev
 
 
-On Ubuntu 24.04 and newer, you can also install `QCA` packages:
+On Debian 13 or Ubuntu 24.04 and newer, you can also install `QCA` packages:
 
 ::
 
@@ -63,7 +63,7 @@ On Ubuntu 24.04 and newer, you can also install `QCA` packages:
       libqca-qt6-dev \
       libqca-qt6-plugins
 
-On Ubuntu 25.04 and newer, you can also install `KF6` packages:
+On Debian 13 or Ubuntu 25.04 and newer, you can also install `KF6` packages:
 
 ::
 
