@@ -2,7 +2,6 @@
 
 #pragma once
 
-
 #include <QObject>
 #include <QtContainerFwd>
 
@@ -28,7 +27,7 @@ using ItemSaverPtr = std::shared_ptr<ItemSaverInterface>;
 class ItemScriptableFactoryInterface;
 using ItemScriptableFactoryPtr = std::shared_ptr<ItemScriptableFactoryInterface>;
 
-#define COPYQ_PLUGIN_ITEM_LOADER_ID "com.github.hluk.copyq.itemloader/13.0.8"
+#define COPYQ_PLUGIN_ITEM_LOADER_ID "com.github.hluk.copyq.itemloader/13.0.9"
 
 /**
  * Handles item in list.
@@ -318,7 +317,7 @@ public:
      * @return true only if items were saved by this plugin (or just not to load them any further)
      */
     virtual ItemSaverPtr loadItems(
-            const QString &tabName, QAbstractItemModel *model, QIODevice *file, int maxItems);
+        const QString &tabName, QAbstractItemModel *model, QIODevice *file, int maxItems);
 
     /**
      * Initialize tab (tab was not yet saved or loaded).

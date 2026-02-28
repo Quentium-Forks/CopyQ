@@ -24,9 +24,9 @@ Build-Depends:
  libxtst-dev,
  libgl1-mesa-dev,
  libvulkan-dev, 
- libqca-qt6-dev (>= 24.04~),
- libqca-qt6-plugins (>= 24.04~),
- libkf6guiaddons-dev (>= 26.04~),
+ libqca-qt6-dev | qt6-base-dev,
+ libqca-qt6-plugins | qt6-base-dev,
+ libkf6guiaddons-dev | qt6-base-dev,
 Standards-Version: 4.7.3
 Vcs-Browser: https://github.com/hluk/CopyQ
 Vcs-Git: https://github.com/hluk/CopyQ.git
