@@ -24,9 +24,9 @@ Build-Depends:
  libxtst-dev,
  libgl1-mesa-dev,
  libvulkan-dev, 
- libqca-qt6-dev <trixie> <forky> <noble> <resolute>,
- libqca-qt6-plugins <trixie> <forky> <noble> <resolute>,
- libkf6guiaddons-dev <trixie> <forky> <resolute>,
+ libqca-qt6-dev (>= 24.04~),
+ libqca-qt6-plugins (>= 24.04~),
+ libkf6guiaddons-dev (>= 26.04~),
 Standards-Version: 4.7.3
 Vcs-Browser: https://github.com/hluk/CopyQ
 Vcs-Git: https://github.com/hluk/CopyQ.git
