@@ -67,7 +67,7 @@ jobs:
           bash ${{ github.workspace }}/release.sh
 
       - name: Upload workflow artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: copyq-${{ matrix.codename }}
           path: |
