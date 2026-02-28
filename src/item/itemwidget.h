@@ -27,7 +27,7 @@ using ItemSaverPtr = std::shared_ptr<ItemSaverInterface>;
 class ItemScriptableFactoryInterface;
 using ItemScriptableFactoryPtr = std::shared_ptr<ItemScriptableFactoryInterface>;
 
-#define COPYQ_PLUGIN_ITEM_LOADER_ID "com.github.hluk.copyq.itemloader/13.0.9"
+#define COPYQ_PLUGIN_ITEM_LOADER_ID "com.github.hluk.copyq.itemloader/13.0.10"
 
 /**
  * Handles item in list.
