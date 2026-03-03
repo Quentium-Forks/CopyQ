@@ -30,6 +30,7 @@ cmake_install.cmake
 /src/qrc_copyq.cxx
 /src/translations.qrc
 /src/qrc_translations.cxx
+/copyq.lang
 
 moc_*
 ui_*
@@ -47,6 +48,13 @@ CMakeLists.txt.user*
 *.pyc
 *.dmg
 /build*
+/release
+rpm/BUILD/
+rpm/BUILDROOT/
+rpm/*RPMS/
+rpm/SOURCES/
+debug*.list
+elfbins.list
 *.qm
 
 # Generated Sphinx files

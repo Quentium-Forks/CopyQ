@@ -16,8 +16,6 @@ file(GLOB copyq_FORMS
 set(copyq_RESOURCES copyq.qrc)
 
 # Qt include paths and definitions
-set(copyq_DEFINITIONS ${${copyq_qt}Widgets_DEFINITIONS})
-
 include(notifications.cmake)
 include(platform/platform.cmake)
 
@@ -129,8 +127,8 @@ endforeach()
 
 set_target_properties(copyq-common PROPERTIES COMPILE_DEFINITIONS "${copyq_DEFINITIONS}")
 set_target_properties(${COPYQ_EXECUTABLE_NAME} PROPERTIES LINK_FLAGS "${copyq_LINK_FLAGS}")
-target_link_libraries(${COPYQ_EXECUTABLE_NAME} ${copyq_LIBRARIES})
 target_link_libraries(copyq-common ${copyq_LIBRARIES})
+target_link_libraries(${COPYQ_EXECUTABLE_NAME} ${copyq_LIBRARIES})
 target_include_directories(copyq-common PRIVATE ${CMAKE_CURRENT_BINARY_DIR} .)
 target_include_directories(${COPYQ_EXECUTABLE_NAME} PRIVATE .)
 

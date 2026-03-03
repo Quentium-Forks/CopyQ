@@ -1,0 +1,62 @@
+Source: copyq
+Section: utils
+Priority: optional
+Maintainer: Lukas Holecek <hluk@email.cz>
+Build-Depends:
+ cmake,
+ debhelper (>= 13),
+ extra-cmake-modules,
+ qt6-base-dev,
+ qt6-base-dev-tools,
+ qt6-base-private-dev,
+ qt6-declarative-dev,
+ qt6-l10n-tools,
+ qt6-tools-dev,
+ qt6-tools-dev-tools,
+ qt6-wayland,
+ qt6-wayland-dev,
+ qt6-wayland-dev-tools,
+ qtkeychain-qt6-dev,
+ libqt6svg6-dev,
+ libqt6waylandclient6,
+ libwayland-dev,
+ libxfixes-dev,
+ libxtst-dev,
+ libgl1-mesa-dev,
+ libvulkan-dev,
+ libqca-qt6-dev <trixie> <forky> <noble> <resolute>,
+ libqca-qt6-plugins <trixie> <forky> <noble> <resolute>,
+ libkf6guiaddons-dev <trixie> <forky> <resolute>,
+Standards-Version: 4.7.3
+Vcs-Browser: https://github.com/hluk/CopyQ
+Vcs-Git: https://github.com/hluk/CopyQ.git
+Homepage: https://hluk.github.io/CopyQ/
+
+Package: copyq
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Advanced clipboard manager with editing and scripting features
+ CopyQ monitors system clipboard and saves its content in customized tabs.
+ Saved clipboard can be later copied and pasted directly into any application.
+ .
+ Items can be:
+  * edited with internal editor or with preferred text editor,
+  * moved to other tabs,
+  * drag'n'dropped to applications,
+  * marked with tag or a note,
+  * passed to or changed by custom commands,
+  * or simply removed.
+ .
+ Features:
+  * Support for Linux, Windows and OS X 10.9+
+  * Store text, HTML, images or any other custom formats
+  * Quickly browse and filter items in clipboard history
+  * Sort, create, edit, remove, copy/paste, drag'n'drop items in tabs
+  * Add notes or tags to items
+  * System-wide shortcuts with customizable commands
+  * Paste items with shortcut or from tray or main window
+  * Fully customizable appearance
+  * Advanced command-line interface and scripting
+  * Ignore clipboard copied from some windows or containing some text
+  * Support for simple Vim-like editor and shortcuts
+  * Many more features
