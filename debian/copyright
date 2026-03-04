@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: CopyQ
-Upstream-Contact: Lukas Holecek <hluk@email.cz>
-Source: https://github.com/hluk/CopyQ
+Upstream-Contact: Quentin Lienhardt <pro@quentium.fr>
+Source: https://github.com/Quentium-Forks/CopyQ
 
 Files: *
 Copyright: 2009-2024 Lukas Holecek <hluk@email.cz>
