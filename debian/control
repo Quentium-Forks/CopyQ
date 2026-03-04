@@ -16,7 +16,7 @@ Build-Depends:
  qt6-wayland,
  qt6-wayland-dev,
  qt6-wayland-dev-tools,
- qtkeychain-qt6-dev,
+ qtkeychain-qt6-dev [!s390x],
  libqt6svg6-dev,
  libqt6waylandclient6,
  libwayland-dev,
