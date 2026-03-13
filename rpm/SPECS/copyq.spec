@@ -8,8 +8,9 @@ URL:        https://hluk.github.io/CopyQ/
 Source0:    %{name}-%{version}.tar.gz
 
 %description
-CopyQ is advanced clipboard manager with searchable and editable history with
-support for image formats, command line control and more.
+CopyQ is an advanced clipboard manager with powerful editing and scripting features.
+CopyQ monitors system clipboard and saves its content in customized tabs.
+Saved clipboard can be later copied and pasted directly into any application.
 
 %prep
 %setup -q

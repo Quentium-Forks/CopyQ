@@ -36,7 +36,7 @@ Homepage: https://hluk.github.io/CopyQ/
 Package: copyq
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Advanced clipboard manager with editing and scripting features
+Description: CopyQ is an advanced clipboard manager with powerful editing and scripting features.
  CopyQ monitors system clipboard and saves its content in customized tabs.
  Saved clipboard can be later copied and pasted directly into any application.
  .
