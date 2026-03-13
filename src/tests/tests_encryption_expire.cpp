@@ -23,6 +23,7 @@ void Tests::expireEncryptionPassword()
     KEYS(clipboardBrowserId);
 
     RUN("config" << "expire_encrypted_tab_seconds" << "2", "2\n");
+    const int waitToExpireMs = 2500;
     KEYS(clipboardBrowserId);
 
     TEST( m_test->stopServer() );
@@ -47,7 +48,7 @@ void Tests::expireEncryptionPassword()
     RUN("show" << tab2, "");
 
     KEYS(clipboardBrowserId);
-    QTest::qWait(2500);
+    QTest::qWait(waitToExpireMs);
     KEYS(clipboardBrowserId);
 
     RUN_MULTIPLE(
@@ -69,7 +70,7 @@ void Tests::expireEncryptionPassword()
 
     // Expire again: active tab should stay unlocked.
     KEYS(clipboardBrowserId);
-    QTest::qWait(2500);
+    QTest::qWait(waitToExpireMs);
     KEYS(clipboardBrowserId);
 
     RUN("show" << tab2, "");
@@ -88,7 +89,7 @@ void Tests::expireEncryptionPassword()
     RUN("show" << tab3, "");
 
     KEYS(clipboardBrowserId);
-    QTest::qWait(2500);
+    QTest::qWait(waitToExpireMs);
     KEYS(clipboardBrowserId);
 
     // Read multiple expired tabs items, wait for password prompt once
@@ -99,7 +100,7 @@ void Tests::expireEncryptionPassword()
     );
 
     KEYS(clipboardBrowserId);
-    QTest::qWait(2500);
+    QTest::qWait(waitToExpireMs);
     KEYS(clipboardBrowserId);
 
     // Expired tabs should require password, even if the configuration changed

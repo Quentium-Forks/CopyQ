@@ -30,6 +30,7 @@ private slots:
     void configPath();
     void readLog();
     void rotateLog();
+    void pluginsDisabled();
     void commandHelp();
     void commandVersion();
     void badCommand();
@@ -227,8 +228,7 @@ private slots:
 
     void configAutostart();
 
-    void configPathEnvVariable();
-    void itemDataPathEnvVariable();
+    void envVariablePaths();
 
     void configTabs();
 
@@ -281,9 +281,7 @@ private slots:
 
     void synchronizeInternalCommands();
 
-    void queryKeyboardModifiersCommand();
-    void pointerPositionCommand();
-    void setPointerPositionCommand();
+    void utilityCommands();
 
     void setTabName();
 
@@ -311,11 +309,7 @@ private slots:
 
     void changeAlwaysOnTop();
 
-    void networkGet();
-    void networkPost();
-    void networkHeaders();
-    void networkRedirects();
-    void networkGetPostAsync();
+    void networkTests();
 
     void pluginNotInstalled();
 
@@ -341,6 +335,9 @@ private slots:
     void dragNDropItemToTabTree();
     void dragNDropTreeTab();
     void dragNDropTreeTabNested();
+    void dragNDropTreeTabChildCollision();
+    void dragNDropTreeTabPartialRenameFailure();
+    void dragNDropTreeTabKeepsCollapsedState();
 
     void tabEncryption();
     void tabEncryptionPasswordNew();

@@ -43,6 +43,7 @@ public:
     void previousTab() override;
 
     void setCurrentTab(int index) override;
+    void moveTab(int from, int to) override;
 
     void adjustSize() override;
 
@@ -93,4 +94,5 @@ private:
 
     QTimer m_timerUpdate;
     QList<QTreeWidgetItem*> m_tabs;
+    QList<QString> m_collapsedPaths;
 };

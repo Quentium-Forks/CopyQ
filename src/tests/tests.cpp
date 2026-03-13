@@ -44,7 +44,7 @@ Q_DECLARE_LOGGING_CATEGORY(testCategory)
 Q_LOGGING_CATEGORY(testCategory, "copyq.tests")
 
 const QString defaultTestId = QStringLiteral("CORE");
-const QString defaultTestPlugins = QStringLiteral("itemtext,itemnotes");
+const QString defaultTestPlugins = QStringLiteral("*itemtext*,*itemnotes*");
 
 class PerformanceTimer final {
 public:
@@ -465,6 +465,13 @@ public:
                 const auto path = settingsDir.absoluteFilePath(fileName);
                 QFile settingsFile(path);
                 if ( settingsFile.exists() && !settingsFile.remove() ) {
+#ifdef Q_OS_WIN
+                    // On Windows, a monitor subprocess may briefly hold
+                    // a lock file after the server exits.
+                    SleepTimer t(5000);
+                    while ( !settingsFile.remove() && t.sleep() ) {}
+                    if ( settingsFile.exists() )
+#endif
                     return QString::fromLatin1("Failed to remove settings file \"%1\": %2")
                         .arg(path, settingsFile.errorString())
                         .toUtf8();
@@ -572,7 +579,7 @@ public:
     {
         m_testId = id;
         m_settings = settings.toMap();
-        m_env.insert("COPYQ_ALLOW_PLUGINS", "itemtests," + allowPlugins);
+        m_env.insert("COPYQ_ALLOW_PLUGINS", "*itemtests*,*" + allowPlugins + "*");
         m_envBeforeTest = m_env;
     }
 

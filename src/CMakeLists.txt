@@ -13,6 +13,9 @@ file(GLOB copyq_FORMS
     ui/*.ui
     )
 
+# translations
+file(GLOB copyq_TRANSLATIONS ../translations/*.ts)
+
 set(copyq_RESOURCES copyq.qrc)
 
 # Qt include paths and definitions
@@ -28,12 +31,6 @@ if (USE_QXT)
     list(APPEND copyq_SOURCES ../qxt/qxtglobalshortcut.cpp)
     list(APPEND copyq_DEFINITIONS QXT_STATIC COPYQ_GLOBAL_SHORTCUTS)
 endif()
-
-# translations
-file(GLOB copyq_TRANSLATIONS ../translations/*.ts)
-
-find_package(${copyq_qt}LinguistTools REQUIRED)
-qt_add_translation(copyq_QM ${copyq_TRANSLATIONS})
 
 qt_wrap_ui(copyq_FORMS_HEADERS ${copyq_FORMS})
 qt_add_resources(copyq_RESOURCES_RCC ${copyq_RESOURCES})
@@ -60,8 +57,18 @@ set(copyq_COMPILE
     ${copyq_SOURCES}
     ${copyq_FORMS_HEADERS}
     ${copyq_VERSION_FILE}
-    )
+   )
 add_library(copyq-common OBJECT ${copyq_COMPILE})
+
+find_package(${copyq_qt} REQUIRED COMPONENTS LinguistTools)
+if("${QT_DEFAULT_MAJOR_VERSION}" STREQUAL "5")
+    qt5_add_translation(copyq_QM ${copyq_TRANSLATIONS})
+else()
+    qt_add_translations(copyq-common
+        TS_FILES ${copyq_TRANSLATIONS}
+        QM_FILES_OUTPUT_VARIABLE copyq_QM
+    )
+endif()
 
 if (NOT copyq_version)
     message(FATAL_ERROR "Application version is unset")
@@ -132,6 +139,30 @@ target_link_libraries(${COPYQ_EXECUTABLE_NAME} ${copyq_LIBRARIES})
 target_include_directories(copyq-common PRIVATE ${CMAKE_CURRENT_BINARY_DIR} .)
 target_include_directories(${COPYQ_EXECUTABLE_NAME} PRIVATE .)
 
+# Precompiled headers for faster MSVC builds.
+# Clang with -Weverything and ccache+PCH cause issues on other platforms.
+if (MSVC)
+    target_precompile_headers(copyq-common PRIVATE
+        <QApplication>
+        <QByteArray>
+        <QCoreApplication>
+        <QDir>
+        <QFile>
+        <QList>
+        <QLoggingCategory>
+        <QMimeData>
+        <QObject>
+        <QRegularExpression>
+        <QSettings>
+        <QString>
+        <QStringList>
+        <QTimer>
+        <QVariant>
+        <QVariantMap>
+        <QWidget>
+    )
+endif()
+
 # install
 if (WIN32)
     install(TARGETS ${COPYQ_EXECUTABLE_NAME}
@@ -154,21 +185,35 @@ else()
 
     set_target_properties(${COPYQ_EXECUTABLE_NAME} PROPERTIES MACOSX_BUNDLE TRUE)
     set_target_properties(${COPYQ_EXECUTABLE_NAME} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/../shared/Info.plist")
+    set_target_properties(${COPYQ_EXECUTABLE_NAME} PROPERTIES
+        INSTALL_RPATH "@executable_path/../Frameworks")
 
     set(BUNDLE "\${CMAKE_INSTALL_PREFIX}/${COPYQ_EXECUTABLE_NAME}.app")
 
     # https://doc.qt.io/qt-6/qt-deploy-runtime-dependencies.html
-    # Generate a deployment script to be executed at install time
-    qt_generate_deploy_script(
-        TARGET ${COPYQ_EXECUTABLE_NAME}
-        OUTPUT_SCRIPT deploy_script
-        CONTENT "
-qt_deploy_runtime_dependencies(
-    EXECUTABLE \"${BUNDLE}\"
-    GENERATE_QT_CONF
-    VERBOSE
-)")
-    install(SCRIPT ${deploy_script})
+    # Generate a deployment script to be executed at install time.
+    # Collect third-party library directories from CMAKE_PREFIX_PATH so
+    # macdeployqt can find them (via -libpath) and resolve their Qt deps.
+    set(COPYQ_DEPLOY_LIBPATHS "")
+    foreach(_prefix ${CMAKE_PREFIX_PATH})
+        get_filename_component(_lib_dir "${_prefix}/lib" ABSOLUTE)
+        if(IS_DIRECTORY "${_lib_dir}")
+            list(APPEND COPYQ_DEPLOY_LIBPATHS "${_lib_dir}")
+        endif()
+    endforeach()
+    list(REMOVE_DUPLICATES COPYQ_DEPLOY_LIBPATHS)
+
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/platform/mac/deploy.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/deploy_copyq.cmake"
+        @ONLY)
+    install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_copyq.cmake")
+
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/platform/mac/fixup_bundle.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/fixup_copyq_bundle.cmake"
+        @ONLY)
+    install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/fixup_copyq_bundle.cmake")
 
     set(CPACK_GENERATOR "DragNDrop")
     include(CPack)
