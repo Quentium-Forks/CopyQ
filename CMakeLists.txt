@@ -26,6 +26,7 @@ OPTION(WITH_PLUGINS "Compile plugins" ON)
 OPTION(WITH_QCA_ENCRYPTION "Enable QCA-based tab encryption" ON)
 OPTION(WITH_KEYCHAIN "Enable system keyring integration using QtKeychain" ON)
 OPTION(WITH_GNOME_CLIPBOARD_EXTENSION "Install GNOME extension, required for clipboard monitoring" ON)
+OPTION(WITH_AUDIO "Build with audio playback support (miniaudio)" ON)
 
 add_definitions( -DQT_USE_STRINGBUILDER  )
 
@@ -94,7 +95,7 @@ set(copyq_ICON_PREFIX     src/images/icon)
 set(copyq_ICON_NORMAL     src/images/icon.svg)
 set(copyq_ICON_MASK       src/images/icon_mask.svg)
 set(copyq_DESKTOP         shared/${copyq_APP_ID}.desktop)
-set(copyq_APPDATA         shared/${copyq_APP_ID}.appdata.xml)
+set(copyq_APPDATA         shared/${copyq_APP_ID}.metainfo.xml)
 set(copyq_BASH_COMPLETION shared/copyq-completion)
 set(copyq_MANPAGE         shared/copyq.1)
 
