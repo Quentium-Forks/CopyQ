@@ -10,13 +10,13 @@ export DEB_LDFLAGS_MAINT_APPEND += -Wl,--as-needed
 	dh $@
 
 override_dh_auto_configure:
-	# Check if qca dependencies are installed
+	# Check if qca dependencies are installed \
 	if dpkg -s libqca-qt6-dev > /dev/null 2>&1; then \
 		EXTRA_FLAGS="-DWITH_QCA_ENCRYPTION=ON"; \
 	else \
 		EXTRA_FLAGS="-DWITH_QCA_ENCRYPTION=OFF"; \
 	fi; \
-	# Check if miniaudio dependencies are installed
+	# Check if miniaudio dependencies are installed \
 	if dpkg -s libminiaudio-dev > /dev/null 2>&1; then \
 		EXTRA_FLAGS="$$EXTRA_FLAGS -DWITH_AUDIO=ON"; \
 	else \
