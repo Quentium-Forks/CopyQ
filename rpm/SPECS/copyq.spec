@@ -1,5 +1,5 @@
 Name:       copyq
-Version:    13.0.0.2
+Version:    13.0.0.3
 Release:    1%{?dist}
 Summary:    Advanced clipboard manager
 
@@ -56,7 +56,7 @@ if command -v desktop-file-validate >/dev/null 2>&1; then
     desktop-file-validate %{buildroot}%{_datadir}/applications/com.github.hluk.%{name}.desktop
 fi
 if command -v appstream-util >/dev/null 2>&1; then
-    appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/com.github.hluk.%{name}.matainfo.xml
+    appstream-util validate-relax --nonet %{buildroot}%{_datadir}/metainfo/com.github.hluk.%{name}.metainfo.xml
 fi
 
 %files -f %{name}.lang
@@ -65,7 +65,7 @@ fi
 %{_bindir}/%{name}
 %{_libdir}/%{name}/
 %{_datadir}/bash-completion/completions/%{name}
-%{_datadir}/metainfo/com.github.hluk.%{name}.matainfo.xml
+%{_datadir}/metainfo/com.github.hluk.%{name}.metainfo.xml
 %{_datadir}/applications/com.github.hluk.%{name}.desktop
 %dir %{_datadir}/icons/hicolor/*/
 %dir %{_datadir}/icons/hicolor/*/apps/
