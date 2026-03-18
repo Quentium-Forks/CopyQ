@@ -26,6 +26,7 @@ Build-Depends:
  libvulkan-dev,
  libqca-qt6-dev <trixie> <forky> <noble> <resolute>,
  libqca-qt6-plugins <trixie> <forky> <noble> <resolute>,
+ libminiaudio-dev <trixie> <forky> <noble> <resolute>,
  libkf6guiaddons-dev <trixie> <forky> <resolute>,
 Standards-Version: 4.7.3
 Rules-Requires-Root: no

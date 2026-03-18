@@ -41,7 +41,6 @@ On **Debian** and derivatives you can install all build dependencies with:
       cmake \
       extra-cmake-modules \
       git \
-      libminiaudio-dev \
       libqt6svg6-dev \
       libqt6waylandclient6 \
       libwayland-dev \
@@ -60,13 +59,14 @@ On **Debian** and derivatives you can install all build dependencies with:
       qtkeychain-qt6-dev
 
 
-On Debian 13 or Ubuntu 24.04 and newer, you can also install `QCA` packages:
+On Debian 13 or Ubuntu 24.04 and newer, you can also install `QCA` and `miniaudio` packages:
 
 ::
 
     sudo apt install \
       libqca-qt6-dev \
-      libqca-qt6-plugins
+      libqca-qt6-plugins \
+      libminiaudio-dev
 
 On Debian 13 or Ubuntu 25.04 and newer, you can also install `KF6` packages:
 

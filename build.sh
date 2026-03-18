@@ -8,6 +8,12 @@ if dpkg -s libqca-qt6-dev > /dev/null 2>&1; then
 else
     EXTRA_FLAGS="-DWITH_QCA_ENCRYPTION=OFF"
 fi
+# Check if miniaudio dependencies are installed
+if dpkg -s libminiaudio-dev > /dev/null 2>&1; then
+    EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_AUDIO=ON"
+else
+    EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_AUDIO=OFF"
+fi
 # Check if kf6 dependencies are installed
 if dpkg -s libkf6guiaddons-dev > /dev/null 2>&1; then
     EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=ON"

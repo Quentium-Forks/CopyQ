@@ -56,7 +56,7 @@ jobs:
       - name: Install libraries for noble
         if: matrix.codename == 'noble' || matrix.codename == 'noble-arm'
         run: |
-          sudo apt-get install -y libqca-qt6-dev libqca-qt6-plugins
+          sudo apt-get install -y libqca-qt6-dev libqca-qt6-plugins libminiaudio-dev
 
       - name: Install build tools
         run: |

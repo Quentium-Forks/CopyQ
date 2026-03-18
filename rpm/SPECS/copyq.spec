@@ -22,6 +22,12 @@ if rpm -q qca-qt6-devel; then
 else
     EXTRA_FLAGS="-DWITH_QCA_ENCRYPTION=OFF"
 fi
+# Check if miniaudio dependencies are installed
+if rpm -q miniaudio-devel; then
+    EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_AUDIO=ON"
+else
+    EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_AUDIO=OFF"
+fi
 # Check if kf6 dependencies are installed
 if rpm -q kf6-kguiaddons-devel; then
     EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=ON"
