@@ -10,6 +10,7 @@
 #include "common/clientsocket.h"
 #include "gui/clipboardbrowsershared.h"
 
+#include <QSet>
 #include <QMap>
 #include <QPointer>
 #include <QTimer>
@@ -37,10 +38,13 @@ struct NotificationButton;
 class ClipboardServer final : public QObject, public App
 {
     Q_OBJECT
+    Q_PROPERTY(QStringList copyqStats READ copyqStats CONSTANT)
 
 public:
     ClipboardServer(QApplication *app, const QString &sessionName);
     ~ClipboardServer();
+
+    QStringList copyqStats() const;
 
     /** Stop monitor application. */
     void stopMonitoring();
@@ -69,6 +73,7 @@ private:
     void onClientMessageReceived(const QByteArray &message, int messageCode, ClientSocketId clientId);
     void onClientDisconnected(ClientSocketId clientId);
     void onClientConnectionFailed(ClientSocketId clientId);
+    void onClipboardProviderRegistered(ClientSocketId clientId, ClipboardMode mode);
 
     /** An error occurred on monitor connection. */
     void onMonitorFinished();
@@ -117,6 +122,7 @@ private:
     ClientSocketPtr findClient(int actionId);
 
     void sendActionData(int actionId, const QByteArray &bytes);
+    void stopAction(int actionId);
 
     void cleanDataFiles();
 
@@ -141,6 +147,7 @@ private:
 
     QMap<int, QByteArray> m_actionDataToSend;
     QTimer m_timerClearUnsentActionData;
+    QSet<int> m_pendingStopActionIds;
     QTimer m_timerCleanItemFiles;
 
     struct ClientData {
@@ -160,6 +167,8 @@ private:
         ScriptableProxy *proxy = nullptr;
     };
     QMap<ClientSocketId, ClientData> m_clients;
+    ClientSocketId m_provideClipboardClientId = 0;
+    ClientSocketId m_provideSelectionClientId = 0;
 
     struct ClientMessage {
         QByteArray message;

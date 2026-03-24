@@ -20,12 +20,16 @@ ClipboardSpy::ClipboardSpy(ClipboardMode mode, const QByteArray &owner)
 
 void ClipboardSpy::wait(int ms, int checkIntervalMs)
 {
+    if (m_stopped)
+        return;
+
     if (m_mode == ClipboardMode::Selection && !m_clipboard->isSelectionSupported())
         return;
 
     QEventLoop loop;
     connect( this, &ClipboardSpy::changed, &loop, &QEventLoop::quit );
     connect( this, &ClipboardSpy::stopped, &loop, &QEventLoop::quit );
+    connect( QCoreApplication::instance(), &QCoreApplication::aboutToQuit, &loop, &QEventLoop::quit );
 
     QTimer timerStop;
     if (ms >= 0) {
@@ -53,7 +57,7 @@ bool ClipboardSpy::setClipboardData(const QVariantMap &data)
             : ClipboardModeFlag::Selection;
         m_connection = m_clipboard->createConnection(QStringList(mimeOwner), mode);
         connect(m_connection.get(), &ClipboardConnection::changed,
-                this, &ClipboardSpy::emitChangeIfChanged);
+                this, &ClipboardSpy::emitChangeIfChanged, Qt::QueuedConnection);
     }
 
     m_clipboard->setData(m_mode, data);
@@ -70,11 +74,16 @@ QByteArray ClipboardSpy::currentOwnerData() const
 
 void ClipboardSpy::stop()
 {
+    m_stopped = true;
+    m_connection.reset();
     emit stopped();
 }
 
 void ClipboardSpy::emitChangeIfChanged()
 {
+    if (m_stopped)
+        return;
+
     const auto newOwner = currentOwnerData();
     if (m_oldOwnerData != newOwner) {
         emit changed();

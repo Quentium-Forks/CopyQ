@@ -52,6 +52,7 @@ private slots:
     void commandVisible();
     void commandToggle();
     void commandShowHide();
+    void commandShowHideRapid();
     void commandShowAt();
     void commandFocused();
 
@@ -139,6 +140,10 @@ private slots:
 
     void commandServerLogAndLogs();
 
+    void commandStats();
+    void statsQObjectLeak();
+    void statsItemPreview();
+
     void classByteArray();
     void classFile();
     void classDir();
@@ -219,6 +224,7 @@ private slots:
     void traySearch();
     void trayPaste();
     void trayShowHideAction();
+    void trayMenuToggleRapid();
 
     void pasteNext();
 
@@ -305,6 +311,8 @@ private slots:
     void exitConfirm();
     void exitNoConfirm();
     void exitStopCommands();
+    void terminateActionRequestTerminate();
+    void terminateActionRequestKill();
 
     void abortInputReader();
 
@@ -320,6 +328,7 @@ private slots:
     void scriptsForPasswords();
 
     void currentClipboardOwner();
+    void singleClipboardProvider();
 
     void saveLargeItem();
 

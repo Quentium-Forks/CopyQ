@@ -149,6 +149,21 @@ void Tests::commandShowHide()
     WAIT_ON_OUTPUT("visible", "true\n");
 }
 
+
+void Tests::commandShowHideRapid()
+{
+    // Verify the main window can be hidden and reshown reliably in
+    // rapid succession.  Regression test for #3445: deferred platform
+    // raise in raiseWindow() could prevent the window from appearing.
+    for (int i = 0; i < 3; ++i) {
+        RUN("visible", "true\n");
+        RUN("hide", "");
+        WAIT_ON_OUTPUT("visible", "false\n");
+
+        RUN("show", "");
+        WAIT_ON_OUTPUT("visible", "true\n");
+    }
+}
 void Tests::commandShowAt()
 {
     RUN("visible", "true\n");
@@ -737,7 +752,7 @@ void Tests::commandEditItem()
     KEYS("END" << ":LINE 1" << "F2");
     const auto expected = QByteArrayLiteral("TESTLINE 1");
 #ifdef Q_OS_WIN
-    const auto expectedClipboard = QByteArrayLiteral("<!--StartFragment-->TESTLINE 1<!--EndFragment-->", mimeHtml);
+    const auto expectedClipboard = QByteArrayLiteral("<!--StartFragment-->TESTLINE 1<!--EndFragment-->");
 #else
     const auto expectedClipboard = expected;
 #endif
@@ -1171,6 +1186,175 @@ void Tests::commandServerLogAndLogs()
     QVERIFY( !stdoutActual.isEmpty() );
     QVERIFY2( QString::fromUtf8(stdoutActual).contains(re), stdoutActual );
 }
+
+void Tests::commandStats()
+{
+    QByteArray stdoutActual;
+    QByteArray stderrActual;
+    QCOMPARE( run(Args("stats"), &stdoutActual, &stderrActual), 0 );
+    QVERIFY2( testStderr(stderrActual), stderrActual );
+    QVERIFY( !stdoutActual.isEmpty() );
+    const auto stats = stdoutActual.split('\n');
+    QVERIFY2( stats.value(0).startsWith("TOTAL: "), stdoutActual);
+    QVERIFY2( stats.contains("QApplication: 1"), stdoutActual);
+    QVERIFY2( stats.contains("MainWindow: 1"), stdoutActual);
+    QVERIFY2( stats.contains("#MainWindow: 1"), stdoutActual);
+    QVERIFY2( stats.contains("#tabWidget: 1"), stdoutActual);
+    QVERIFY2( stats.contains("#searchBar: 1"), stdoutActual);
+    QVERIFY2( stats.contains("/MainWindow/#centralWidget/#tabWidget: 1"), stdoutActual);
+    QVERIFY2( stats.contains("/MainWindow/#centralWidget/Utils::FilterLineEdit#searchBar: 1"), stdoutActual);
+    QVERIFY2( stats.contains("/MainWindow/#centralWidget/#tabWidget/QStackedWidget/ClipboardBrowserPlaceholder/ClipboardBrowser: 1"), stdoutActual);
+    QVERIFY2( stats.contains("/MainWindow/#centralWidget/#tabWidget/QStackedWidget/ClipboardBrowserPlaceholder: 1"), stdoutActual);
+
+    // Verify model stats
+    RUN("add" << "test_item", "");
+    QCOMPARE( run(Args("stats"), &stdoutActual, &stderrActual), 0 );
+    QVERIFY2( testStderr(stderrActual), stderrActual );
+    const auto stats2 = stdoutActual.split('\n');
+    bool hasModelWithDataSize = false;
+    for (const auto &line : stats2) {
+        if (line.startsWith("MODEL ")) {
+            QVERIFY2(line.contains("rows="), line);
+            if (line.contains("dataSize=")) {
+                hasModelWithDataSize = true;
+                // Verify human-readable suffix is present
+                QVERIFY2(line.contains(" B)") || line.contains(" KiB)") || line.contains(" MiB)"), line);
+            }
+        }
+    }
+    QVERIFY2(hasModelWithDataSize, stdoutActual);
+
+    // Verify data directory size
+    bool hasDataDir = false;
+    for (const auto &line : stats2) {
+        if (line.startsWith("DATA_DIR ")) {
+            hasDataDir = true;
+            QVERIFY2(line.contains("size="), line);
+        }
+    }
+    QVERIFY2(hasDataDir, stdoutActual);
+
+    // Verify new stat lines
+    bool hasTabs = false;
+    bool hasCommands = false;
+    bool hasLogFiles = false;
+    for (const auto &line : stats2) {
+        if (line.startsWith("TABS: ")) {
+            hasTabs = true;
+            QVERIFY2(line.contains("total="), line);
+            QVERIFY2(line.contains("loaded="), line);
+        }
+        if (line.startsWith("COMMANDS: ")) {
+            hasCommands = true;
+            QVERIFY2(line.contains("automatic="), line);
+            QVERIFY2(line.contains("script="), line);
+        }
+        if (line.startsWith("LOG_FILES: ")) {
+            hasLogFiles = true;
+            QVERIFY2(line.contains("count="), line);
+            QVERIFY2(line.contains("size="), line);
+        }
+    }
+    QVERIFY2(hasTabs, stdoutActual);
+    QVERIFY2(hasCommands, stdoutActual);
+    QVERIFY2(hasLogFiles, stdoutActual);
+}
+
+void Tests::statsQObjectLeak()
+{
+    // Set up items and commands that produce QObjects on selection change:
+    // - inMenu commands trigger context menu rebuilds (updateContextMenu)
+    // - display command triggers runDisplayCommands() on item widget creation
+    // - matchCmd triggers runMenuCommandFilters() on selection change
+    RUN("add" << "B" << "A", "");
+    const auto script = R"(
+        setCommands([
+            {name: 'cmd1', inMenu: true, shortcuts: ['Ctrl+F1'], cmd: 'copyq add cmd1'},
+            {name: 'cmd2', inMenu: true, globalShortcuts: ['Ctrl+F2'], cmd: 'copyq add cmd2'},
+            {name: 'cmd3', inMenu: true, matchCmd: 'copyq: true', cmd: 'copyq add cmd3'},
+            {name: 'cmd4', display: true, cmd: 'copyq: setData(mimeHtml, data(mimeText))'},
+        ])
+        )";
+    RUN(script, "");
+
+    // Open item preview.
+    KEYS(clipboardBrowserId << "F7");
+    RUN("preview", "true\n");
+
+    // Exercise the UI: select items back and forth to trigger menu rebuilds.
+    auto exerciseUI = [&]{
+        RUN("selectItems(0)", "true\n");
+        RUN("selectItems(1)", "true\n");
+        RUN("selectItems(0)", "true\n");
+        RUN("selectItems(1)", "true\n");
+    };
+
+    // Warm up: first pass may allocate lazy-init objects.
+    exerciseUI();
+
+    // Capture baseline QObject count.
+    QByteArray stdoutActual;
+    QByteArray stderrActual;
+    QCOMPARE( run(Args("stats"), &stdoutActual, &stderrActual), 0 );
+    QVERIFY2( testStderr(stderrActual), stderrActual );
+    const auto baseline = stdoutActual.split('\n').value(0);
+    QVERIFY2( baseline.startsWith("TOTAL: "), baseline );
+    const int baselineTotal = baseline.mid(7).trimmed().toInt();
+    QVERIFY(baselineTotal > 0);
+
+    // Exercise the same UI interactions again.
+    exerciseUI();
+
+    // Capture QObject count after second pass.
+    QCOMPARE( run(Args("stats"), &stdoutActual, &stderrActual), 0 );
+    QVERIFY2( testStderr(stderrActual), stderrActual );
+    const auto after = stdoutActual.split('\n').value(0);
+    QVERIFY2( after.startsWith("TOTAL: "), after );
+    const int afterTotal = after.mid(7).trimmed().toInt();
+
+    QVERIFY2(
+        afterTotal <= baselineTotal,
+        QStringLiteral("QObject count grew from %1 to %2 — possible leak")
+            .arg(baselineTotal).arg(afterTotal).toUtf8()
+    );
+}
+
+void Tests::statsItemPreview()
+{
+    RUN("add" << "test_item", "");
+
+    const QByteArray previewItemLine =
+        "/MainWindow/#dockWidgetItemPreview"
+        "/#dockWidgetItemPreviewContents/QScrollArea#ClipboardBrowser"
+        "/#item_preview/ItemText#item: 1";
+
+    QByteArray statsOutput;
+    auto fetchStats = [&]() {
+        QByteArray stderrActual;
+        run(Args("stats"), &statsOutput, &stderrActual);
+    };
+    auto statsContainPreviewItem = [&]() {
+        return statsOutput.split('\n').contains(previewItemLine);
+    };
+
+    // Preview disabled — no preview item widget in stats.
+    RUN("preview", "false\n");
+    fetchStats();
+    QVERIFY2(!statsContainPreviewItem(), statsOutput);
+
+    // Enable preview — item widget should appear.
+    KEYS(clipboardBrowserId << "F7");
+    RUN("preview", "true\n");
+    fetchStats();
+    QVERIFY2(statsContainPreviewItem(), statsOutput);
+
+    // Disable preview — item widget must be gone (not leaked).
+    KEYS(clipboardBrowserId << "F7");
+    RUN("preview", "false\n");
+    fetchStats();
+    QVERIFY2(!statsContainPreviewItem(), statsOutput);
+}
+
 
 void Tests::chainingCommands()
 {
