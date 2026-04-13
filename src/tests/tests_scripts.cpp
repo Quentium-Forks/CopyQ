@@ -10,6 +10,7 @@
 #include <QElapsedTimer>
 #include <QRegularExpression>
 #include <QTemporaryFile>
+#include <algorithm>
 
 void Tests::commandExit()
 {
@@ -51,6 +52,59 @@ void Tests::commandEvalThrows()
     RUN_EXPECT_ERROR("eval" << "throw Error(1)", CommandException);
     RUN_EXPECT_ERROR("eval" << "throw 1", CommandException);
 }
+
+void Tests::commandEvalThrowsWithLineNumber()
+{
+    // Multi-line script: exception on a specific line
+    RUN_EXPECT_ERROR_WITH_STDERR(
+        "eval" << "var x = 1\nvar y = 2\nthrow Error('on line 3')",
+        CommandException,
+        "At line 3 in:\n"
+        " 1|var x = 1\n"
+        " 2|var y = 2\n"
+        " 3|throw Error('on line 3')\n"
+    );
+
+    // Single-line throw: line number is 1
+    RUN_EXPECT_ERROR_WITH_STDERR(
+        "throw Error('single line')", CommandException,
+        "At line 1 in:\n"
+    );
+
+    // Non-Error throw: no line number (no .lineNumber on plain string)
+    RUN_EXPECT_ERROR_WITH_STDERR(
+        "throw 'no line info'", CommandException,
+        "ScriptError: no line info\n"
+    );
+
+    // Nested eval: inner script is multiline (2 lines)
+    RUN_EXPECT_ERROR_WITH_STDERR(
+        "eval" << "eval(\"\\\\nthrow Error('nested')\")",
+        CommandException,
+        "At line 2 in:\n"
+        " 1|\n"
+        " 2|throw Error('nested')\n"
+    );
+
+    // Doubly nested eval: both inner scripts are multiline.
+    // Inner script is 3 lines, middle script is 2 lines.
+    RUN_EXPECT_ERROR_WITH_STDERR(
+        "eval" << "eval(\"\\\\neval('\\\\\\\\n\\\\\\\\nthrow Error()')\")",
+        CommandException,
+        "At line 3 in:\n"
+        " 1|\n"
+        " 2|\n"
+        " 3|throw Error()\n"
+    );
+
+    // Verify the middle frame in the doubly nested case is also numbered
+    RUN_EXPECT_ERROR_WITH_STDERR(
+        "eval" << "eval(\"\\\\neval('\\\\\\\\n\\\\\\\\nthrow Error()')\")",
+        CommandException,
+        " 2|eval('\\n\\nthrow Error()')\n"
+    );
+}
+
 
 void Tests::commandEvalSyntaxError()
 {
@@ -1258,6 +1312,14 @@ void Tests::commandStats()
     QVERIFY2(hasTabs, stdoutActual);
     QVERIFY2(hasCommands, stdoutActual);
     QVERIFY2(hasLogFiles, stdoutActual);
+
+    // Verify monitorClipboard internal action appears with per-sub-process pid/rss
+    const auto isMonitorAction = [](const QByteArray &line) {
+        return line.startsWith("ACTION ") && line.contains("monitorClipboard");
+    };
+    const auto it = std::find_if(stats2.cbegin(), stats2.cend(), isMonitorAction);
+    QVERIFY2(it != stats2.cend(), stdoutActual);
+    QVERIFY2(it->contains("pid="), *it);
 }
 
 void Tests::statsQObjectLeak()

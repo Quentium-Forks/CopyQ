@@ -5,8 +5,8 @@
 #include "app/clipboardmonitor.h"
 #include "common/action.h"
 #include "common/appconfig.h"
-#include "common/audioplayer.h"
 #include "common/command.h"
+#include "common/diagnostics.h"
 #include "common/commandstatus.h"
 #include "common/commandstore.h"
 #include "common/common.h"
@@ -56,16 +56,8 @@
 #include <QThread>
 #include <QTimer>
 
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-#   include <QTextCodec>
-#else
-#   include <QStringDecoder>
-#   include <QStringEncoder>
-#endif
-
-#ifdef WITH_NATIVE_NOTIFICATIONS
-#   include <knotifications_version.h>
-#endif
+#include <QStringDecoder>
+#include <QStringEncoder>
 
 Q_DECLARE_METATYPE(QByteArray*)
 Q_DECLARE_METATYPE(QFile*)
@@ -131,23 +123,28 @@ QString argumentError()
     return Scriptable::tr("Invalid number of arguments!");
 }
 
-QString exceptionBacktrace(const QJSValue &exception, const QStringList &stack = {})
+QString exceptionBacktrace(const QJSValue &exception, const QStringList &stack)
 {
-    const auto backtraceValue = exception.property("stack");
-    auto backtrace = backtraceValue.isUndefined() ? QStringList() : backtraceValue.toString().split("\n");
-    for (int i = backtrace.size() - 1; i >= 0; --i) {
-        if ( backtrace[i] == QLatin1String("@:1") )
-            backtrace.removeAt(i);
-    }
-    for (const auto &frame : stack)
-        backtrace.append(frame);
-
-    if ( backtrace.isEmpty() )
+    if ( stack.isEmpty() )
         return {};
 
-    return QStringLiteral("\n\n--- backtrace ---\n%1\n--- end backtrace ---")
-        .arg(backtrace.join(QLatin1String("\n")));
+    QStringList annotatedStack = stack;
+    for (auto &frame : annotatedStack) {
+        if (frame.contains('\n')) {
+            auto lines = frame.split('\n');
+            int i = 0;
+            for (auto &line : lines)
+                line.prepend(QStringLiteral("%1|").arg(++i, /*fieldWidth=*/2));
+            frame = lines.join('\n') + '\n';
+        }
+    }
 
+    const auto lineNumber = exception.property("lineNumber");
+    const auto line = lineNumber.isNumber() ? lineNumber.toInt() : 0;
+    const auto lineIndicator = (line > 0) ? QStringLiteral("At line %1 in:\n").arg(line) : QString();
+
+    return QStringLiteral("\n\n--- backtrace ---\n%1%2\n--- end backtrace ---")
+        .arg(lineIndicator, annotatedStack.join(QLatin1String("\n")));
 }
 
 QJSValue evaluateStrict(QJSEngine *engine, const QString &script)
@@ -156,7 +153,7 @@ QJSValue evaluateStrict(QJSEngine *engine, const QString &script)
     if ( v.isError() ) {
         const auto scriptText = QStringLiteral("--- SCRIPT BEGIN ---\n%1\n--- SCRIPT END ---").arg(script);
         log( QStringLiteral("Exception during evaluate: %1%2\n\n%3")
-            .arg(v.toString(), exceptionBacktrace(v), scriptText), LogError );
+            .arg(v.toString(), exceptionBacktrace(v, {}), scriptText), LogError );
     }
     return v;
 }
@@ -178,7 +175,7 @@ QByteArray serializeScriptValue(const QJSValue &value, Scriptable *scriptable)
 
     if (bytes != nullptr) {
         data = *bytes;
-    } else if ( value.isArray() || value.toVariant().type() == QVariant::StringList ) {
+    } else if ( value.isArray() || value.toVariant().typeId() == QMetaType::QStringList ) {
         const quint32 len = value.property("length").toUInt();
         for (quint32 i = 0; i < len; ++i)
             data += serializeScriptValue(value.property(i), scriptable);
@@ -248,53 +245,6 @@ QJSValue checksumForArgument(Scriptable *scriptable, QCryptographicHash::Algorit
     return QLatin1String(hash);
 }
 
-QString scriptToLabel(const QString &script)
-{
-    constexpr auto maxScriptSize = 30;
-    if (maxScriptSize < script.size())
-        return script.left(maxScriptSize).simplified() + QLatin1String("...");
-    return script;
-}
-
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-QTextCodec *codecFromNameOrThrow(const QJSValue &codecName, Scriptable *scriptable)
-{
-    const auto codec = QTextCodec::codecForName( scriptable->makeByteArray(codecName) );
-    if (!codec) {
-        QString codecs;
-        for (const auto &availableCodecName : QTextCodec::availableCodecs())
-            codecs.append( "\n" + QLatin1String(availableCodecName) );
-        scriptable->throwError("Available codecs are:" + codecs);
-    }
-    return codec;
-}
-
-QJSValue toUnicode(const QByteArray &bytes, const QJSValue &codecName, Scriptable *scriptable)
-{
-    const auto codec = codecFromNameOrThrow(codecName, scriptable);
-    if (!codec)
-        return QJSValue();
-
-    return codec->toUnicode(bytes);
-}
-
-QJSValue toUnicode(const QByteArray &bytes, Scriptable *scriptable)
-{
-    const auto codec = QTextCodec::codecForUtfText(bytes, nullptr);
-    if (!codec)
-        return scriptable->throwError("Failed to detect encoding");
-    return codec->toUnicode(bytes);
-}
-
-QJSValue fromUnicode(const QString &text, const QJSValue &codecName, Scriptable *scriptable)
-{
-    const auto codec = codecFromNameOrThrow(codecName, scriptable);
-    if (!codec)
-        return QJSValue();
-
-    return scriptable->newByteArray( codec->fromUnicode(text) );
-}
-#else
 std::optional<QStringConverter::Encoding> encodingFromNameOrThrow(const QJSValue &codecName, Scriptable *scriptable)
 {
     const auto encoding = QStringConverter::encodingForName( scriptable->makeByteArray(codecName) );
@@ -332,7 +282,6 @@ QJSValue fromUnicode(const QString &text, const QJSValue &codecName, Scriptable 
     return scriptable->newByteArray(
         QStringEncoder(*encoding, flags).encode(text) );
 }
-#endif
 
 bool isGuiApplication()
 {
@@ -342,6 +291,12 @@ bool isGuiApplication()
 bool isOverridden(const QJSValue &globalObject, const QString &property)
 {
     return globalObject.property(property).property(QStringLiteral("_copyq")).toString() != property;
+}
+
+bool isSimpleIdentifier(QStringView s)
+{
+    return !s.isEmpty() && s[0].isLetter()
+        && std::all_of(s.cbegin() + 1, s.cend(), [](QChar c) { return c.isLetterOrNumber(); });
 }
 
 } // namespace
@@ -363,30 +318,19 @@ Scriptable::Scriptable(
     QJSValue globalObject = m_engine->globalObject();
     globalObject.setProperty(QStringLiteral("global"), globalObject);
 
+
     m_safeCall = evaluateStrict(m_engine, QStringLiteral(
         "(function() {"
-            "try {return this.apply(global, arguments);}"
-            "catch(e) {_copyqUncaughtException = e; throw e;}"
-        "})"
-    ));
-
-    m_safeEval = evaluateStrict(m_engine, QStringLiteral(
-        "(function(){"
-            "var _eval = eval;"
-            "return function(script) {"
-                "try {return _eval(script);}"
-                "catch(e) {_copyqUncaughtException = e; throw e;}"
-            "}"
-        "})()"
-    ));
+            "try {return {result: this.apply(global, arguments)};}"
+            "catch(e) {throw {exception: e};}"
+        "})"));
 
     m_createFn = evaluateStrict(m_engine, QStringLiteral(
         "(function(from, name) {"
-            "var f = function() {"
+            "const f = function() {"
                 "_copyqArguments = arguments;"
-                "var v = from[name]();"
+                "const v = from[name]();"
                 "_copyqArguments = null;"
-                "if (_copyqHasUncaughtException) throw _copyqUncaughtException;"
                 "return v;"
             "};"
             "f._copyq = name;"
@@ -395,11 +339,10 @@ Scriptable::Scriptable(
     ));
     m_createFnB = evaluateStrict(m_engine, QStringLiteral(
         "(function(from, name) {"
-            "var f = function() {"
+            "const f = function() {"
                 "_copyqArguments = arguments;"
-                "var v = from[name]();"
+                "const v = from[name]();"
                 "_copyqArguments = null;"
-                "if (_copyqHasUncaughtException) throw _copyqUncaughtException;"
                 "return ByteArray(v);"
             "};"
             "f._copyq = 1;"
@@ -510,7 +453,7 @@ QByteArray Scriptable::makeByteArray(const QJSValue &value) const
         return *data;
 
     const QVariant variant = value.toVariant();
-    if (variant.type() == QVariant::ByteArray)
+    if (variant.typeId() == QMetaType::QByteArray)
         return variant.toByteArray();
 
     return fromString(value.toString());
@@ -564,12 +507,8 @@ QString Scriptable::arg(int i, const QString &defaultValue)
 
 QJSValue Scriptable::throwError(const QString &errorMessage)
 {
-    // QJSEngine::throwError() is available in Qt 5.12.
-    QJSValue throwFn = evaluateStrict(m_engine,  QStringLiteral(
-        "(function(text) {throw new Error(text);})"
-    ));
-    const auto exc = throwFn.call({errorMessage});
-    m_engine->throwError(QJSValue::GenericError, errorMessage);
+    auto exc = m_engine->newErrorObject(QJSValue::GenericError, errorMessage);
+    m_engine->throwError(exc);
     return exc;
 }
 
@@ -583,32 +522,29 @@ QJSValue Scriptable::throwImportError(const QString &filePath)
     return throwError( tr("Failed to import file \"%1\"").arg(filePath) );
 }
 
-bool Scriptable::hasUncaughtException() const
+QJSValue Scriptable::unwrapResultOrException(const QJSValue &resultOrException)
 {
-    return m_hasUncaughtException;
+    if (resultOrException.hasOwnProperty(QStringLiteral("result")))
+        return resultOrException.property(QStringLiteral("result"));
+
+    auto exc = resultOrException.property(QStringLiteral("exception"));
+    logUncaughtException(exc);
+    m_engine->throwError(exc);
+    return exc;
 }
 
 void Scriptable::clearExceptions()
 {
-    m_hasUncaughtException = false;
-    m_uncaughtException = QJSValue();
-    m_uncaughtExceptionStack.clear();
+    m_lastLoggedException = {};
+
+    if (m_engine->hasError())
+        m_engine->catchError();
 
     if (m_abort == Abort::CurrentEvaluation) {
         m_engine->setInterrupted(false);
         m_abort = Abort::None;
         m_abortWithSuccess = false;
     }
-}
-
-void Scriptable::setUncaughtException(const QJSValue &exc)
-{
-    if (m_abort != Abort::None || m_hasUncaughtException)
-        return;
-
-    m_uncaughtException = exc;
-    m_hasUncaughtException = true;
-    m_uncaughtExceptionStack = m_stack;
 }
 
 QJSValue Scriptable::getPlugins()
@@ -637,12 +573,18 @@ QJSValue Scriptable::call(const QString &label, QJSValue *fn, const QVariantList
 
 QJSValue Scriptable::call(const QString &label, QJSValue *fn, const QJSValueList &arguments)
 {
+    if ( m_engine->hasError() )
+        return {};
+
     m_stack.prepend(label);
     COPYQ_LOG_VERBOSE( QStringLiteral("Stack push: %1").arg(m_stack.join('|')) );
+
     const auto v = m_safeCall.callWithInstance(*fn, arguments);
+    const auto result = unwrapResultOrException(v);
+
     m_stack.pop_front();
     COPYQ_LOG_VERBOSE( QStringLiteral("Stack pop: %1").arg(m_stack.join('|')) );
-    return v;
+    return result;
 }
 
 QJSValue Scriptable::ByteArray() const
@@ -717,28 +659,8 @@ QJSValue Scriptable::NetworkRequest() const
 QJSValue Scriptable::version()
 {
     m_skipArguments = 0;
-    return tr("CopyQ Clipboard Manager") + " " + versionString + "\n"
-            + "Qt: " QT_VERSION_STR "\n"
-#ifdef WITH_NATIVE_NOTIFICATIONS
-            + "KNotifications: " KNOTIFICATIONS_VERSION_STRING "\n"
-#endif
-            + "Compiler: "
-#if defined(Q_CC_GNU)
-            "GCC"
-#elif defined(Q_CC_CLANG)
-            "Clang"
-#elif defined(Q_CC_MINGW)
-            "MinGW"
-#elif defined(Q_CC_MSVC)
-            "MSVC"
-#else
-            "???"
-#endif
-            + "\n"
-            + "Arch: " + QSysInfo::buildAbi() + "\n"
-            + "OS: " + QSysInfo::prettyProductName() + "\n"
-            + "Audio: " + audioBackendVersion() + "\n"
-            ;
+    return tr("CopyQ Clipboard Manager")
+        + " " + versionString + "\n" + diagnosticText();
 }
 
 QJSValue Scriptable::help()
@@ -1459,10 +1381,10 @@ QJSValue Scriptable::config()
         return m_proxy->configDescription();
 
     const auto result = m_proxy->config(nameValueInput);
-    if ( result.type() == QVariant::String )
+    if ( result.typeId() == QMetaType::QString )
         return result.toString();
 
-    if ( result.type() == QVariant::StringList ) {
+    if ( result.typeId() == QMetaType::QStringList ) {
         QString errors;
         const auto unknownOptions = result.toStringList();
         for (const auto &name : unknownOptions) {
@@ -1477,7 +1399,7 @@ QJSValue Scriptable::config()
     const auto nameValue = result.toMap();
     if ( nameValue.size() == 1 ) {
         const auto value = nameValue.constBegin().value();
-        return value.type() == QVariant::StringList || value.type() == QVariant::List
+        return value.typeId() == QMetaType::QStringList || value.typeId() == QMetaType::QVariantList
             ? toScriptValue(value, m_engine)
             : toScriptValue(value.toString(), m_engine);
     }
@@ -1487,7 +1409,7 @@ QJSValue Scriptable::config()
         const auto name = it.key();
         const auto value = it.value();
         const auto textValue =
-            value.type() == QVariant::StringList || value.type() == QVariant::List
+            value.typeId() == QMetaType::QStringList || value.typeId() == QMetaType::QVariantList
             ? value.toStringList().join(',')
             : value.toString();
         output.append( name + "=" + textValue );
@@ -1504,7 +1426,7 @@ QJSValue Scriptable::toggleConfig()
         return throwError(argumentError());
 
     const auto result = m_proxy->toggleConfig(optionName);
-    if ( result.type() != QVariant::Bool ) {
+    if ( result.typeId() != QMetaType::Bool ) {
         return throwError( QStringLiteral("Invalid boolean option \"%1\"!").arg(optionName) );
     }
 
@@ -1515,122 +1437,22 @@ QJSValue Scriptable::info()
 {
     m_skipArguments = 1;
 
-    const QString logFile = logFileName();
-    using InfoMap = QMap<QString, QString>;
-    InfoMap info;
-    info.insert("config", QSettings().fileName());
-    info.insert("exe", QCoreApplication::applicationFilePath());
-    info.insert("log", logFile);
-    info.insert("data", itemDataPath());
-
-    info.insert("plugins",
-#ifdef COPYQ_PLUGIN_PREFIX
-                COPYQ_PLUGIN_PREFIX
-#else
-                m_proxy ? m_proxy->pluginsPath() : pluginsPath()
-#endif
-                );
-
-    info.insert("themes",
-#ifdef COPYQ_THEME_PREFIX
-                COPYQ_THEME_PREFIX
-#else
-                m_proxy ? m_proxy->themesPath() : themesPath()
-#endif
-                );
-
-    info.insert("translations",
-#ifdef COPYQ_TRANSLATION_PREFIX
-                COPYQ_TRANSLATION_PREFIX
-#else
-                m_proxy ? m_proxy->translationsPath() : translationsPath()
-#endif
-                );
-
-    info.insert("themes(custom)", qgetenv("COPYQ_THEME_PREFIX"));
-    info.insert("translations(custom)", qgetenv("COPYQ_TRANSLATION_PREFIX"));
-
-    info.insert("icons",
-#ifdef COPYQ_ICON_PREFIX
-                COPYQ_ICON_PREFIX
-#else
-                QString()
-#endif
-                );
-
-    info.insert("desktop",
-#ifdef COPYQ_DESKTOP_FILE
-                COPYQ_DESKTOP_FILE
-#else
-                QString()
-#endif
-                );
-
-    info.insert("has-mouse-selection",
-#ifdef HAS_MOUSE_SELECTIONS
-                "1"
-#else
-                "0"
-#endif
-                );
-
-    info.insert("has-global-shortcuts",
-#ifdef COPYQ_GLOBAL_SHORTCUTS
-                "1"
-#else
-                "0"
-#endif
-                );
-
-    info.insert("has-encryption",
-#ifdef WITH_QCA_ENCRYPTION
-                "1"
-#else
-                "0"
-#endif
-                );
-
-    info.insert("has-keychain",
-#ifdef WITH_KEYCHAIN
-                "1"
-#else
-                "0"
-#endif
-                );
-
-    info.insert("has-audio",
-#ifdef WITH_AUDIO
-                "1"
-#else
-                "0"
-#endif
-                );
-
-    info.insert("platform",
-#if defined(Q_OS_WIN)
-                "Windows"
-#elif defined(Q_OS_MAC)
-                "OS X"
-#elif defined(Q_OS_LINUX)
-                "Linux"
-#elif defined(Q_OS_UNIX)
-                "Unix"
-#else
-                "?"
-#endif
-
-#ifdef COPYQ_WITH_X11
-                "/X11"
-#endif
-                );
+    const auto paths = pathMap();
+    const auto info = infoMap();
 
     const QString name = arg(0);
-    if (!name.isEmpty())
+    if (!name.isEmpty()) {
+        const auto it = paths.constFind(name);
+        if (it != paths.constEnd())
+            return it.value();
         return info.value(name);
+    }
 
     QString result;
     for (auto it = info.constBegin(); it != info.constEnd(); ++it)
-        result.append( QStringLiteral("%1: %2\n").arg(it.key(), it.value()) );
+        result.append(QStringLiteral("%1: %2\n").arg(it.key(), it.value()));
+    for (auto it = paths.constBegin(); it != paths.constEnd(); ++it)
+        result.append(QStringLiteral("%1: %2\n").arg(it.key(), it.value()));
     result.chop(1);
 
     return result;
@@ -1640,8 +1462,6 @@ QJSValue Scriptable::eval()
 {
     const auto script = arg(0);
     const auto result = eval(script);
-    if ( result.isError() )
-        setUncaughtException(result);
     m_skipArguments = -1;
     return result;
 }
@@ -2023,7 +1843,7 @@ QJSValue Scriptable::currentWindowTitle()
 
 QJSValue Scriptable::currentClipboardOwner()
 {
-    return eval("currentWindowTitle()");
+    return call(QStringLiteral("currentWindowTitle"));
 }
 
 QJSValue Scriptable::dialog()
@@ -2264,9 +2084,6 @@ QJSValue Scriptable::afterMilliseconds()
 
 QVariant Scriptable::call(const QString &method, const QVariantList &arguments)
 {
-    if ( hasUncaughtException() )
-        return QVariant();
-
     auto fn = m_engine->globalObject().property(method);
     const auto result = call(method, &fn, arguments);
     m_skipArguments = -1;
@@ -2401,26 +2218,24 @@ QJSValue Scriptable::loadTheme()
 
 void Scriptable::onClipboardChanged()
 {
-    eval(R"(
-    if (!hasData()) {
-        updateClipboardData();
-    } else if (runAutomaticCommands()) {
-        saveData();
-        updateClipboardData();
+    if (!call(QStringLiteral("hasData")).toBool()) {
+        call(QStringLiteral("updateClipboardData"));
+    } else if (call(QStringLiteral("runAutomaticCommands")).toBool()) {
+        call(QStringLiteral("saveData"));
+        call(QStringLiteral("updateClipboardData"));
     } else {
-        clearClipboardData();
+        call(QStringLiteral("clearClipboardData"));
     }
-    )", "onClipboardChanged()");
 }
 
 void Scriptable::onOwnClipboardChanged()
 {
-    eval("updateClipboardData()");
+    call(QStringLiteral("updateClipboardData"));
 }
 
 void Scriptable::onHiddenClipboardChanged()
 {
-    eval("updateClipboardData()");
+    call(QStringLiteral("updateClipboardData"));
 }
 
 void Scriptable::onClipboardUnchanged()
@@ -2431,7 +2246,7 @@ void Scriptable::onSecretClipboardChanged()
 {
     // Drop secret data by default
     m_data = {{mimeSecret, m_data.value(mimeSecret)}};
-    eval("updateClipboardData()");
+    call(QStringLiteral("updateClipboardData"));
 }
 
 void Scriptable::synchronizeToSelection()
@@ -2506,23 +2321,19 @@ void Scriptable::hideDataNotification()
 
 void Scriptable::updateClipboardData()
 {
-    eval(R"(
-    if (isClipboard()) {
-        updateTitle();
-        showDataNotification();
-        setClipboardData();
+    if (call(QStringLiteral("isClipboard")).toBool()) {
+        call(QStringLiteral("updateTitle"));
+        call(QStringLiteral("showDataNotification"));
+        call(QStringLiteral("setClipboardData"));
     }
-    )", "updateClipboardData()");
 }
 
 void Scriptable::clearClipboardData()
 {
-    eval(R"(
-    if (isClipboard()) {
-        setTitle();
-        hideDataNotification();
+    if (call(QStringLiteral("isClipboard")).toBool()) {
+        call(QStringLiteral("setTitle"));
+        call(QStringLiteral("hideDataNotification"));
     }
-    )", "clearClipboardData()");
 }
 
 QJSValue Scriptable::runAutomaticCommands()
@@ -2648,7 +2459,9 @@ void Scriptable::monitorClipboard()
         return;
 
     ClipboardMonitor monitor(
-        fromScriptValue<QStringList>(eval("clipboardFormatsToSave()"), m_engine) );
+        fromScriptValue<QStringList>(call(QStringLiteral("clipboardFormatsToSave")), m_engine) );
+
+    clearExceptions();
 
     QEventLoop loop;
     connect(this, &Scriptable::finished, &loop, &QEventLoop::quit);
@@ -2667,10 +2480,7 @@ void Scriptable::monitorClipboard()
     connect( &monitor, &ClipboardMonitor::fetchCurrentClipboardOwner,
              this, &Scriptable::onFetchCurrentClipboardOwner );
     connect( &monitor, &ClipboardMonitor::saveData,
-             m_proxy, [this](const QVariantMap &data) {
-                 m_data = data;
-                 eval("if (hasData()) { saveData(); }");
-             } );
+             this, &Scriptable::onSaveData);
 
     monitor.startMonitoring();
     setClipboardMonitorRunning(true);
@@ -2806,9 +2616,21 @@ void Scriptable::onSynchronizeSelection(ClipboardMode sourceMode, uint sourceTex
 
 void Scriptable::onFetchCurrentClipboardOwner(QString *owner)
 {
-    const QJSValue result = eval("currentClipboardOwner()");
+    const QJSValue result = call(QStringLiteral("currentClipboardOwner"));
     if ( !result.isError() )
         *owner = toString(result);
+
+    clearExceptions();
+}
+
+void Scriptable::onSaveData(const QVariantMap &data)
+{
+    m_data = data;
+    if (call(QStringLiteral("hasData")).toBool())
+        call(QStringLiteral("saveData"));
+    m_data.clear();
+
+    clearExceptions();
 }
 
 bool Scriptable::sourceScriptCommands()
@@ -2818,10 +2640,8 @@ bool Scriptable::sourceScriptCommands()
         const auto script = QStringLiteral("(function(){%1\n;})()").arg(command.cmd);
         const auto label = QStringLiteral("source@<%1>").arg(command.name);
         eval(script, label);
-        if ( hasUncaughtException() ) {
-            processUncaughtException(label);
+        if ( m_engine->hasError() )
             return false;
-        }
     }
 
     return true;
@@ -2879,7 +2699,7 @@ int Scriptable::executeArgumentsSimple(const QStringList &args)
     const auto evalFn = globalObject.property("eval");
 
     QString label;
-    while ( skipArguments < fnArgs.size() && canContinue() && !hasUncaughtException() ) {
+    while ( skipArguments < fnArgs.size() && canContinue() && !m_engine->hasError() ) {
         if ( result.isCallable() ) {
             const auto arguments = fnArgs.mid(skipArguments);
             if ( result.strictlyEquals(evalFn) )
@@ -2891,52 +2711,45 @@ int Scriptable::executeArgumentsSimple(const QStringList &args)
             skipArguments += m_skipArguments;
         } else {
             cmd = toString(fnArgs[skipArguments]);
-            label = scriptToLabel(cmd);
             result = eval(cmd, label);
             ++skipArguments;
         }
     }
 
-    if ( result.isCallable() && canContinue() && !hasUncaughtException() ) {
-        const QString label2 = QStringLiteral("eval(arguments[%1])()").arg(skipArguments - 1);
-        result = call( label2, &result, fnArgs.mid(skipArguments) );
-    }
+    if ( result.isCallable() && canContinue() && !m_engine->hasError() )
+        result = call( QStringLiteral("_()"), &result, fnArgs.mid(skipArguments) );
 
     if (m_abort != Abort::None)
         return m_abortWithSuccess ? CommandFinished : CommandStop;
 
-    if ( hasUncaughtException() ) {
-        processUncaughtException(QString());
+    if ( m_engine->hasError() )
         return CommandException;
-    }
 
     const auto message = serializeScriptValue(result);
     print(message);
     return CommandFinished;
 }
 
-void Scriptable::processUncaughtException(const QString &cmd)
+void Scriptable::logUncaughtException(const QJSValue &exc)
 {
-    const auto exceptionName = m_uncaughtException.toString()
+    if (m_lastLoggedException.equals(exc))
+        return;
+    m_lastLoggedException = exc;
+
+    const auto exceptionName = exc.toString()
             .remove(QRegularExpression("^Error: "))
             .trimmed();
 
-    const QString backtraceText = exceptionBacktrace(m_uncaughtException, m_uncaughtExceptionStack);
+    const QString backtraceText = exceptionBacktrace(exc, m_stack);
     const auto exceptionText = QStringLiteral("ScriptError: %3%4").arg(exceptionName, backtraceText);
 
     // Show exception popups only if the script was launched from application.
     // (avoid it if launched from command line).
     if (m_actionId != -1) {
         showExceptionMessage(exceptionName);
-
-        auto label = m_actionName;
-        if ( !cmd.isEmpty() )
-            label.append("::" + cmd);
-
-        if (label.isEmpty())
-            label = QStringLiteral("Exception in command: ");
-        else
-            label = QStringLiteral("Exception in command \"%1\": ").arg(label);
+        const QString label = m_actionName.isEmpty()
+            ? QStringLiteral("Exception in command: ")
+            : QStringLiteral("Exception in command \"%1\": ").arg(m_actionName);
         m_proxy->serverLog(label + exceptionText);
     }
 
@@ -3179,11 +2992,52 @@ QJSValue Scriptable::screenshot(bool select)
 
 QJSValue Scriptable::eval(const QString &script, const QString &label)
 {
-    m_stack.prepend(QStringLiteral("eval:") + label);
+    if (m_engine->hasError())
+        return QJSValue();
+
+    // If script is just an identifier or a simple function call, look up the
+    // global function and call it to avoid much slower eval.
+    QStringView trimmed = QStringView(script).trimmed();
+
+    const bool needCall = trimmed.endsWith(QLatin1String("()"));
+    if (needCall)
+        trimmed.chop(2);
+
+    if (isSimpleIdentifier(trimmed)) {
+        const auto name = trimmed.toString();
+        auto globalObj = m_engine->globalObject();
+        if (globalObj.hasProperty(name)) {
+            auto obj = globalObj.property(name);
+            if (!needCall)
+                return obj;
+            if (obj.isCallable())
+                return call(name, &obj);
+        }
+    }
+
+    return evalAndCatch(script, label);
+}
+
+QJSValue Scriptable::evalAndCatch(const QString &script, const QString &label)
+{
+    m_stack.prepend(label);
     COPYQ_LOG_VERBOSE( QStringLiteral("Stack push: %1").arg(m_stack.join('|')) );
-    const auto result = m_safeEval.call({QJSValue(script)});
+
+    QStringList exceptionStackTrace;
+    // Workarounds for QJSEngine::evaluate:
+    // - fileName argument is set to empty string, otherwise QJSEngine::evaluate leaks memory
+    // - exceptionStackTrace is only used to indicate that an exception was
+    //   thrown, since it cannot be clear from the result nor from
+    //   QJSEngine::hasError()
+    const auto result = m_engine->evaluate(script, QString(), 1, &exceptionStackTrace);
+    if (!exceptionStackTrace.isEmpty()) {
+        logUncaughtException(result);
+        m_engine->throwError(result);
+    }
+
     m_stack.pop_front();
     COPYQ_LOG_VERBOSE( QStringLiteral("Stack pop: %1").arg(m_stack.join('|')) );
+
     return result;
 }
 
@@ -3200,7 +3054,13 @@ void Scriptable::setActionName(const QString &actionName)
 
 QJSValue Scriptable::eval(const QString &script)
 {
-    return eval(script, scriptToLabel(script));
+    return eval(script, script);
+}
+
+QJSValue Scriptable::call(const QString &functionName)
+{
+    auto fn = m_engine->globalObject().property(functionName);
+    return call(functionName, &fn);
 }
 
 bool Scriptable::runAction(Action *action)

@@ -257,11 +257,11 @@ If pasting still doesn't work, it could be caused by either of these problems:
 - CopyQ fails to focus the target window correctly.
 - The format copied to the clipboard is not supported by the target application.
 
-How to open the menu or context menu with only the keyboard?
-------------------------------------------------------------
+How to open the context menu for selected items with only the keyboard?
+-----------------------------------------------------------------------
 
-Use ``Alt+I`` to open the item menu or use the ``Menu`` key on your keyboard
-to open the context menu for selected items.
+In the main CopyQ window, press the ``Menu`` key (or ``Shift+F10``) to open
+the context menu for selected items.
 
 .. _faq-hide-menu-bar:
 
@@ -448,18 +448,19 @@ Alternatively, run the following command::
 Why does encryption ask for password so often?
 ----------------------------------------------
 
-CopyQ 14.0.0 and above has a built-in encryption support, which requires
-password only at start (and when changing encryption password). Even that can
-be avoided if "Use external key store" option is enabled and the system
-supports it (Windows Credential Store, macOS Keychain, GNOME Keyring, KWallet).
+With built-in encryption (the recommended approach), CopyQ asks for the
+password at startup and when changing the encryption password. If **Require
+password after an interval** is enabled (in the "History" configuration tab),
+the password is also requested periodically. The startup prompt can be avoided
+by enabling the **Use external key store** option, which stores the password in
+the platform key store (Windows Credential Store, macOS Keychain, GNOME Keyring,
+or KWallet) — but the periodic prompt, if enabled, still applies.
 
-In older versions, there is an Encryption plugin which uses ``gpg2`` utility to
-decrypt tabs and items. The password usually needs to be entered once every few
-minutes.
-
-If the password prompt is showing up too often, either increase tab unloading
-interval ("Unload tab after an interval" option in "History" tab in
-Preferences), or change ``gpg`` configuration (see `#946
+If you are using the legacy **Encryption plugin** (which relies on ``gpg2``),
+the password usually needs to be re-entered once every few minutes. To reduce
+prompts, either increase the tab unloading interval ("Unload tab after an
+interval" option in "History" tab in Preferences) or change ``gpg``
+configuration (see `#946
 <https://github.com/hluk/CopyQ/issues/946#issuecomment-389538964>`__).
 
 How to fix "copyq: command not found" errors?
@@ -486,6 +487,63 @@ you can **fix it by using** ``COPYQ`` environment variable instead.
     bash:
     text="SOME TEXT"
     "$COPYQ" copy "$text"
+
+.. _faq-memory-usage:
+
+How can I reduce CopyQ memory usage?
+------------------------------------
+
+When a tab is loaded, its item data are kept in memory. This includes smaller
+items (stored in the tab data file) and visible larger items (stored in
+separate files in data directory). A tab data loads when it is first accessed
+and stays resident until explicitly unloaded, the unload interval expires,
+configuration changes, or the application restarts.
+
+Each item can include multiple data formats. By default new items are
+automatically added when the clipboard changes. The stored formats depend on
+which plugins are loaded and any custom commands that modify clipboard
+processing.
+
+In version 14.0.0 and later, you can copy memory statistics to the clipboard
+by running the following command in the Action dialog (``F5``) or a terminal::
+
+    copyq stats | copyq copy -
+
+Key lines to look at:
+
+- ``MODEL`` lines — in-memory data size for loaded tabs and other data models.
+- ``DATA_DIR`` — item data directory size. Larger item data (above the
+  ``item_data_threshold`` option, default 1024 bytes) are stored as separate
+  files here and loaded into memory only when the item is displayed or read.
+  Smaller data are stored directly in tab data files and loaded with the tab.
+- ``TABS: total=N, loaded=N`` — how many tabs are loaded vs total.
+- ``MEMORY: rss=...`` — process resident memory.
+
+See :js:func:`stats` API documentation for details.
+
+Options to reduce memory usage:
+
+- Reduce maximum items per tab — the default is 200. Lower it in
+  Preferences in the History section.
+- Enable "Unload tab after an interval" in the History section in Preferences.
+  Tabs that have not been accessed recently will be unloaded automatically.
+  You can also unload all tabs on demand with :js:func:`unload` or
+  :js:func:`forceUnload`.
+- Disable unused item plugins in Preferences in the Items section. Plugins for
+  images, rich text and other non-text formats keep extra data per item.
+- Lower ``item_data_threshold`` so that more item data are stored as separate
+  files instead of inline in the tab data file. Data in separate files are
+  loaded only on demand, while inline data are loaded with the entire tab.
+  For example, to store all item data as separate files::
+
+      copyq config item_data_threshold 0
+
+  Conversely, ``-1`` disables the data directory and stores everything inline,
+  which can speed up item lookups but increases memory usage.
+
+  Changing this options has effect only when tab is saved again (items change).
+
+See also :ref:`faq-config-path` for finding data files.
 
 What to do when CopyQ crashes or misbehaves?
 --------------------------------------------

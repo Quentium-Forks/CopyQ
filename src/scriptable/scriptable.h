@@ -53,9 +53,6 @@ class Scriptable final : public QObject
 
     Q_PROPERTY(QJSValue plugins READ getPlugins CONSTANT)
 
-    Q_PROPERTY(QJSValue _copyqUncaughtException READ uncaughtException WRITE setUncaughtException)
-    Q_PROPERTY(QJSValue _copyqHasUncaughtException READ hasUncaughtException)
-
 public:
     Scriptable(
             QJSEngine *engine,
@@ -107,10 +104,7 @@ public:
     QJSValue throwExportError(const QString &filePath);
     QJSValue throwImportError(const QString &filePath);
 
-    bool hasUncaughtException() const;
     void clearExceptions();
-    QJSValue uncaughtException() const { return m_uncaughtException; }
-    void setUncaughtException(const QJSValue &exc);
 
     QJSEngine *engine() const { return m_engine; }
 
@@ -141,6 +135,8 @@ public:
     QJSValue getPlugins();
 
     QJSValue eval(const QString &script, const QString &label);
+    QJSValue evalAndCatch(const QString &script, const QString &label);
+    QJSValue call(const QString &functionName);
 
     QJSValue call(const QString &label, QJSValue *fn, const QVariantList &arguments);
     QJSValue call(const QString &label, QJSValue *fn, const QJSValueList &arguments = QJSValueList());
@@ -418,10 +414,12 @@ private:
     void onMonitorClipboardUnchanged(const QVariantMap &data);
     void onSynchronizeSelection(ClipboardMode sourceMode, uint sourceTextHash, uint targetTextHash);
     void onFetchCurrentClipboardOwner(QString *title);
+    void onSaveData(const QVariantMap &data);
 
     bool sourceScriptCommands();
     void callDisplayFunctions(QJSValueList displayFunctions);
-    void processUncaughtException(const QString &cmd);
+    void logUncaughtException(const QJSValue &exc);
+    QJSValue unwrapResultOrException(const QJSValue &resultOrException);
     void showExceptionMessage(const QString &message);
     QVector<int> getRows() const;
 
@@ -501,17 +499,13 @@ private:
 
     PlatformClipboardPtr m_clipboard;
 
-    QJSValue m_uncaughtException;
-    bool m_hasUncaughtException = false;
-
+    QJSValue m_lastLoggedException;
     QStringList m_stack;
-    QStringList m_uncaughtExceptionStack;
 
-    QJSValue m_safeCall;
-    QJSValue m_safeEval;
     QJSValue m_createFn;
     QJSValue m_createFnB;
     QJSValue m_createProperty;
+    QJSValue m_safeCall;
 
     QJSValue m_byteArrayPrototype;
     QJSValue m_filePrototype;

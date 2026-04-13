@@ -11,6 +11,7 @@
 #include "common/common.h"
 #include "common/config.h"
 #include "common/contenttype.h"
+#include "common/diagnostics.h"
 #include "common/display.h"
 #include "common/log.h"
 #include "common/mimetypes.h"
@@ -79,35 +80,13 @@ namespace {
 const quint32 serializedFunctionCallMagicNumber = 0x58746908;
 const quint32 serializedFunctionCallVersion = 2;
 constexpr bool hasPriority = false;
-
-QString formatDataSize(qint64 bytes)
-{
-    if (bytes < 1024)
-        return QStringLiteral("%1 B").arg(bytes);
-    if (bytes < 1024 * 1024)
-        return QStringLiteral("%1 KiB").arg(bytes / 1024.0, 0, 'f', 1);
-    if (bytes < 1024 * 1024 * 1024)
-        return QStringLiteral("%1 MiB").arg(bytes / (1024.0 * 1024.0), 0, 'f', 1);
-    return QStringLiteral("%1 GiB").arg(bytes / (1024.0 * 1024.0 * 1024.0), 0, 'f', 1);
-}
+constexpr auto dataStreamVersion = QDataStream::Qt_6_2;
 
 void registerMetaTypes() {
     static bool registered = false;
     if (registered)
         return;
 
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-    qRegisterMetaType<QPointer<QWidget>>("QPointer<QWidget>");
-    qRegisterMetaTypeStreamOperators<ClipboardMode>("ClipboardMode");
-    qRegisterMetaTypeStreamOperators<Command>("Command");
-    qRegisterMetaTypeStreamOperators<NamedValueList>("NamedValueList");
-    qRegisterMetaTypeStreamOperators<NotificationButtonList>("NotificationButtonList");
-    qRegisterMetaTypeStreamOperators<QVector<int>>("QVector<int>");
-    qRegisterMetaTypeStreamOperators<QVector<Command>>("QVector<Command>");
-    qRegisterMetaTypeStreamOperators<VariantMapList>("VariantMapList");
-    qRegisterMetaTypeStreamOperators<KeyboardModifierList>("KeyboardModifierList");
-    qRegisterMetaTypeStreamOperators<MessageData>("MessageData");
-#else
     qRegisterMetaType<QPointer<QWidget>>("QPointer<QWidget>");
     qRegisterMetaType<ClipboardMode>("ClipboardMode");
     qRegisterMetaType<Command>("Command");
@@ -118,7 +97,6 @@ void registerMetaTypes() {
     qRegisterMetaType<VariantMapList>("VariantMapList");
     qRegisterMetaType<KeyboardModifierList>("KeyboardModifierList");
     qRegisterMetaType<MessageData>("MessageData");
-#endif
 
     registered = true;
 }
@@ -156,25 +134,13 @@ void selectionRemoveInvalid(QList<QPersistentModelIndex> *indexes)
         hasPriority ? CommandFunctionCallPriority : CommandFunctionCall); \
 } while(false)
 
-#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
-#   define CHECK_STREAM_OPERATORS(CALL) \
-        static constexpr auto metaType = QMetaType::fromType<Result>(); \
-        COPYQ_LOG_VERBOSE( \
-            QStringLiteral("%1 invoking: %2 " CALL)\
-                .arg(m_wnd ? "Server" : "Client") \
-                .arg(metaType.name())); \
-        Q_ASSERT(metaType.hasRegisteredDataStreamOperators())
-#else
-#   define CHECK_STREAM_OPERATORS(CALL) \
-        if ( hasLogLevel(LogTrace) ) { \
-            static const auto metaTypeName = QMetaType::typeName(qMetaTypeId<Result>()); \
-            COPYQ_LOG_VERBOSE( \
-                QStringLiteral("%1 invoking: %2 " CALL)\
-                    .arg(m_wnd ? "Server" : "Client") \
-                    .arg(metaTypeName) \
-            ); \
-        }
-#endif
+#define CHECK_STREAM_OPERATORS(CALL) \
+    static constexpr auto metaType = QMetaType::fromType<Result>(); \
+    COPYQ_LOG_VERBOSE( \
+        QStringLiteral("%1 invoking: %2 " CALL)\
+            .arg(m_wnd ? "Server" : "Client") \
+            .arg(metaType.name())); \
+    Q_ASSERT(metaType.hasRegisteredDataStreamOperators())
 
 #define INVOKE(FUNCTION, ARGUMENTS) do { \
     using Result = decltype(FUNCTION ARGUMENTS); \
@@ -350,11 +316,7 @@ public:
     {
         QByteArray bytes;
         QDataStream stream(&bytes, QIODevice::WriteOnly);
-#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
-        stream.setVersion(QDataStream::Qt_6_0);
-#else
-        stream.setVersion(QDataStream::Qt_5_0);
-#endif
+        stream.setVersion(dataStreamVersion);
         stream << serializedFunctionCallMagicNumber << serializedFunctionCallVersion
                << functionCallId << m_slotName << args;
         return bytes;
@@ -372,7 +334,7 @@ public:
         if ( std::is_same<QVariant, T>::value )
             return "QVariant";
 
-        return QMetaType::typeName(qMetaTypeId<T>());
+        return QMetaType(qMetaTypeId<T>()).name();
     }
 
 private:
@@ -611,22 +573,22 @@ QWidget *createWidget(const QString &name, const QVariant &value, InputDialog *i
 {
     QWidget *parent = inputDialog->parent;
 
-    switch ( value.type() ) {
-    case QVariant::Bool:
+    switch ( value.typeId() ) {
+    case QMetaType::Bool:
         return label(name, createAndSetWidget<QCheckBox>("checked", value, parent));
-    case QVariant::Int:
+    case QMetaType::Int:
         return createSpinBox(name, value, parent);
-    case QVariant::Date:
+    case QMetaType::QDate:
         return createDateTimeEdit(name, "date", value, parent);
-    case QVariant::Time:
+    case QMetaType::QTime:
         return createDateTimeEdit(name, "time", value, parent);
-    case QVariant::DateTime:
+    case QMetaType::QDateTime:
         return createDateTimeEdit(name, "dateTime", value, parent);
-    case QVariant::List:
-    case QVariant::StringList:
+    case QMetaType::QVariantList:
+    case QMetaType::QStringList:
         return createListWidget(name, value.toStringList(), inputDialog);
     default:
-        if ( value.type() == QVariant::Url ) {
+        if ( value.typeId() == QMetaType::QUrl ) {
             const auto path = value.toUrl();
             return createFileNameEdit(name, path.toLocalFile(), parent);
         }
@@ -674,10 +636,8 @@ ScriptableProxy::ScriptableProxy(MainWindow *mainWindow, QObject *parent)
     , m_wnd(mainWindow)
 {
     registerMetaTypes();
-#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
     Q_ASSERT(QMetaType::fromType<Command>().hasRegisteredDataStreamOperators());
     Q_ASSERT(QMetaType::fromType<ClipboardMode>().hasRegisteredDataStreamOperators());
-#endif
 }
 
 void ScriptableProxy::callFunction(const QByteArray &serializedFunctionCall)
@@ -707,7 +667,7 @@ QByteArray ScriptableProxy::callFunctionHelper(const QByteArray &serializedFunct
     int functionCallId;
     {
         QDataStream stream(serializedFunctionCall);
-        stream.setVersion(QDataStream::Qt_5_0);
+        stream.setVersion(dataStreamVersion);
 
         quint32 magicNumber;
         quint32 version;
@@ -786,14 +746,10 @@ QByteArray ScriptableProxy::callFunctionHelper(const QByteArray &serializedFunct
         called = metaMethod.invoke(
                 this, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
     } else {
-#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
         const QMetaType metaType(typeId);
         COPYQ_LOG_VERBOSE(QStringLiteral("Script function return type: %1").arg(metaType.name()));
         Q_ASSERT(metaType.hasRegisteredDataStreamOperators());
         returnValue = QVariant(metaType, nullptr);
-#else
-        returnValue = QVariant(typeId, nullptr);
-#endif
         const auto genericReturnValue = returnValue.isValid()
                 ? QGenericReturnArgument( returnValue.typeName(), static_cast<void*>(returnValue.data()) )
                 : QGenericReturnArgument( "QVariant", static_cast<void*>(returnValue.data()) );
@@ -1318,11 +1274,11 @@ QVariant ScriptableProxy::toggleConfig(const QString &optionName)
     QVariantList nameValue;
     nameValue.append(optionName);
     const auto values = m_wnd->config(nameValue);
-    if ( values.type() == QVariant::StringList )
+    if ( values.typeId() == QMetaType::QStringList )
         return values;
 
     const auto oldValue = values.toMap().constBegin().value();
-    if ( oldValue.type() != QVariant::Bool )
+    if ( oldValue.typeId() != QMetaType::Bool )
         return QVariant();
 
     const auto newValue = !QVariant(oldValue).toBool();
@@ -1806,7 +1762,8 @@ void ScriptableProxy::selectionSetItemsFormat(int id, const QString &mime, const
     INVOKE2(selectionSetItemsFormat, (id, mime, value));
 
     const auto selection = m_selections.value(id);
-    setItemsData(selection.browser, selection.indexes, mime, value);
+    if (selection.browser)
+        setItemsData(selection.browser, selection.indexes, mime, value);
 }
 
 void ScriptableProxy::selectionMove(int id, int row)
@@ -1990,8 +1947,8 @@ int ScriptableProxy::inputDialog(const NamedValueList &values)
     QObject::connect( buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject );
     dialog.layout()->addWidget(buttons);
 
-    installShortcutToCloseDialog(&dialog, &dialog, Qt::ControlModifier | Qt::Key_Enter);
-    installShortcutToCloseDialog(&dialog, &dialog, Qt::ControlModifier | Qt::Key_Return);
+    installShortcutToCloseDialog(&dialog, &dialog, QKeyCombination(Qt::ControlModifier, Qt::Key_Enter).toCombined());
+    installShortcutToCloseDialog(&dialog, &dialog, QKeyCombination(Qt::ControlModifier, Qt::Key_Return).toCombined());
 
     if (icon.isNull())
         icon = appIcon();
@@ -2168,24 +2125,6 @@ void ScriptableProxy::setPointerPosition(int x, int y)
     QScreen *screen = QGuiApplication::screenAt(pos);
     if (screen)
         QCursor::setPos(screen, pos);
-}
-
-QString ScriptableProxy::pluginsPath()
-{
-    INVOKE(pluginsPath, ());
-    return ::pluginsPath();
-}
-
-QString ScriptableProxy::themesPath()
-{
-    INVOKE(themesPath, ());
-    return ::themesPath();
-}
-
-QString ScriptableProxy::translationsPath()
-{
-    INVOKE(translationsPath, ());
-    return ::translationsPath();
 }
 
 QString ScriptableProxy::iconColor()
@@ -2547,7 +2486,7 @@ QString ScriptableProxy::stats()
 
     // Process memory via platform interface
     {
-        const qint64 rss = platformNativeInterface()->processResidentMemoryBytes();
+        const qint64 rss = platformNativeInterface()->processResidentMemoryBytes(QCoreApplication::applicationPid());
         if (rss >= 0) {
             result += QStringLiteral("MEMORY: rss=%1 (%2)")
                 .arg(rss).arg(formatDataSize(rss));
@@ -2717,25 +2656,6 @@ bool ScriptableProxy::getSelectionData()
     for (auto it = data.constBegin(); it != data.constEnd(); ++it)
         m_actionData[it.key()] = it.value();
     return true;
-}
-
-QString pluginsPath()
-{
-    QDir dir;
-    if (platformNativeInterface()->findPluginDir(&dir))
-        return dir.absolutePath();
-
-    return QString();
-}
-
-QString themesPath()
-{
-    return platformNativeInterface()->themePrefix();
-}
-
-QString translationsPath()
-{
-    return platformNativeInterface()->translationPrefix();
 }
 
 void setClipboardMonitorRunning(bool running)

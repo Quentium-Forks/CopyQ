@@ -292,10 +292,8 @@ Dialog *openDialog(Ts... arguments)
 
 bool isItemActivationShortcut(const QKeySequence &shortcut)
 {
-    return (shortcut.matches(Qt::Key_Return) || shortcut.matches(Qt::Key_Enter))
-            && shortcut[1] == 0
-            && shortcut[2] == 0
-            && shortcut[3] == 0;
+    return shortcut.count() == 1
+            && (shortcut.matches(Qt::Key_Return) || shortcut.matches(Qt::Key_Enter));
 }
 
 QString importExportFileDialogFilter()
@@ -2229,6 +2227,17 @@ bool MainWindow::toggleMenu(TrayMenu *menu, QPoint pos)
 #endif
     raiseWindow(menu);
 
+    // On Wayland the menu is a frameless toplevel (not a popup), so
+    // raiseWindow's activation guard ("app already active") is not
+    // sufficient — the compositor won't move focus from another toplevel
+    // (e.g. an open dialog) to the newly mapped menu window without an
+    // explicit activation request after the raise.
+    if (!menu->windowFlags().testFlag(Qt::Popup)) {
+        menu->activateWindow();
+        QApplication::setActiveWindow(menu);
+        menu->setFocus();
+    }
+
     return true;
 }
 
@@ -3091,6 +3100,12 @@ void MainWindow::loadSettings(QSettings &settings, AppConfig *appConfig)
         saveTabs();
     }
 
+    // Show the tray icon early so it is visible while the encryption
+    // password dialog blocks (see https://github.com/hluk/CopyQ/issues/3502).
+    m_options.nativeTrayMenu = appConfig->option<Config::native_tray_menu>();
+    setTrayEnabled( !appConfig->option<Config::disable_tray>() );
+    updateIcon();
+
     promptForEncryptionPasswordIfNeeded(appConfig);
     reencryptTabsIfNeeded(appConfig);
 
@@ -3172,12 +3187,7 @@ void MainWindow::loadSettings(QSettings &settings, AppConfig *appConfig)
     m_trayMenu->setStyleSheet(menuStyleSheet);
     m_menu->setStyleSheet(menuStyleSheet);
 
-    if (m_options.nativeTrayMenu != appConfig->option<Config::native_tray_menu>())
-        m_options.nativeTrayMenu = appConfig->option<Config::native_tray_menu>();
-    setTrayEnabled( !appConfig->option<Config::disable_tray>() );
     updateTrayMenuItems();
-
-    updateIcon();
 
     menuBar()->setNativeMenuBar( appConfig->option<Config::native_menu_bar>() );
 
@@ -4081,7 +4091,9 @@ void MainWindow::findNextOrPrevious()
 
 void MainWindow::enterBrowseMode()
 {
-    getPlaceholder()->setFocus();
+    auto placeholder = getPlaceholder();
+    if (placeholder)
+        placeholder->setFocus();
     ui->searchBar->hide();
 
     auto c = browserOrNull();

@@ -111,7 +111,8 @@ void Tests::scriptCommandWithError()
     );
     RUN_EXPECT_ERROR_WITH_STDERR(
         "", CommandError,
-        "\neval:source@<bad_script>\n"
+        "At line 1 in:\n"
+        "source@<bad_script>\n"
         "--- end backtrace ---\n"
     );
 }

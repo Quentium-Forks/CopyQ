@@ -27,6 +27,14 @@ namespace {
 const char propertySelectedItem[] = "CopyQ_selected";
 constexpr int defaultMaxItemHeight = 2048 * 8;
 
+void updatePalette(QWidget *widget)
+{
+    const QPalette palette = widget->palette();
+    for ( auto *child : widget->findChildren<QWidget*>() ) {
+        child->setPalette(palette);
+    }
+}
+
 } // namespace
 
 ItemDelegate::ItemDelegate(ClipboardBrowser *view, const ClipboardBrowserSharedPtr &sharedData, QWidget *parent)
@@ -335,9 +343,10 @@ void ItemDelegate::highlightMatches(ItemWidget *itemWidget) const
 
 void ItemDelegate::updateAllRows()
 {
+    const auto margins = m_sharedData->theme.margins();
     const int s = m_view->spacing();
     const int space = 2 * s;
-    int y = -m_view->verticalOffset() + s;
+    int y = -m_view->verticalOffset() + s + margins.height();
 
     for (int row = 0; static_cast<size_t>(row) < m_items.size(); ++row) {
         const bool hide = m_view->isRowHidden(row);
@@ -444,6 +453,11 @@ void ItemDelegate::setIndexWidget(const QModelIndex &index, ItemWidget *w)
             updateItemWidgetSize(row);
         }
 
+        // Re-apply theme palette after sizing. updateItemWidgetSize()
+        // may call setDocument() on QTextEdit children, which can
+        // recreate scrollbar widgets that miss the initial palette.
+        updatePalette(ww);
+
         ww->installEventFilter(this);
         updateItemSize(index, ww->size());
         updateLater();
@@ -469,7 +483,7 @@ QPoint ItemDelegate::findPositionForWidget(const QModelIndex &index) const
         if ( ww->isHidden() )
             continue;
 
-        y = ww->geometry().top() - margins.height() + m_items[row].size.height()
+        y = ww->geometry().top() - margins.height() + m_items[row].size.height() + s
             + skipped * (defaultItemHeight + 2 * s);
         break;
     }
@@ -492,11 +506,15 @@ void ItemDelegate::setCurrentRow(int row, bool current)
 
 void ItemDelegate::setWidgetSelected(QWidget *ww, bool selected)
 {
-    if ( ww->property(propertySelectedItem).toBool() == selected )
+    const auto oldValue = ww->property(propertySelectedItem);
+    if ( oldValue.isValid() && oldValue.toBool() == selected )
         return;
 
     ww->setProperty(propertySelectedItem, selected);
+    for (auto *w : ww->findChildren<QWidget*>())
+        w->setProperty(propertySelectedItem, selected);
     ww->setStyleSheet(m_view->styleSheet());
+    updatePalette(ww);
 }
 
 int ItemDelegate::findWidgetRow(const QObject *obj) const
@@ -591,8 +609,16 @@ void ItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
 {
     const bool isSelected = option.state & QStyle::State_Selected;
 
-    // Render background (selected, alternate, ...).
+    // Draw the list widget background clipped to the item rect so that
+    // rounded corners reveal the correct background (including gradients).
+    painter->save();
+    painter->setClipRect(option.rect);
+    QStyleOption bgOpt;
+    bgOpt.initFrom(m_view);
+    bgOpt.rect = m_view->viewport()->rect();
     QStyle *style = m_view->style();
+    style->drawPrimitive(QStyle::PE_Widget, &bgOpt, painter, m_view);
+    painter->restore();
     style->drawControl(QStyle::CE_ItemViewItem, &option, painter, m_view);
 
     // Colorize item.

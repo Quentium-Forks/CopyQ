@@ -26,9 +26,25 @@ The build requires:
 - `CMake <https://cmake.org/download/>`__
 - `Qt <https://download.qt.io/archive/qt/>`__
 
-Optional:
+Optional (enabled by default, disable with the corresponding CMake option):
 
-- `miniaudio <https://miniaud.io/>`__ -- for built-in audio playback (``playSound``)
+- `QCA <https://invent.kde.org/libraries/qca>`__ (Qt Cryptographic
+  Architecture) -- for tab encryption (``-DWITH_QCA_ENCRYPTION=OFF`` to
+  disable)
+- `QtKeychain <https://github.com/frankosterfeld/qtkeychain>`__ -- for storing
+  encryption passwords in the system keychain (``-DWITH_KEYCHAIN=OFF`` to
+  disable)
+- `KNotifications <https://invent.kde.org/frameworks/knotifications>`__ -- for
+  native notifications (``-DWITH_NATIVE_NOTIFICATIONS=OFF`` to disable)
+- `miniaudio <https://miniaud.io/>`__ -- for built-in audio playback
+  (``playSound``) (``-DWITH_AUDIO=OFF`` to disable)
+
+Conditional:
+
+- `ECM <https://invent.kde.org/frameworks/extra-cmake-modules>`__ (Extra CMake
+  Modules) -- for native notifications and Wayland clipboard support
+- `KGuiAddons <https://invent.kde.org/frameworks/kguiaddons>`__ -- for Wayland
+  clipboard support
 
 Debian / Ubuntu
 ^^^^^^^^^^^^^^^
@@ -191,16 +207,6 @@ Build with the following commands:
     cmake -DCMAKE_PREFIX_PATH="$(brew --prefix qt6)" .
     cmake --build .
     cpack
-
-To build with Qt 5 (make sure to install qt@5 yourself):
-
-::
-
-
-    cmake -DCMAKE_PREFIX_PATH="$(brew --prefix qt5)" -DWITH_QT6=OFF .
-    cmake --build .
-    cpack
-
 
 This will produce a self-contained application bundle ``CopyQ.app``
 which can then be copied or moved into ``/Applications``.

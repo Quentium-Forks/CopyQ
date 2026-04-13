@@ -80,7 +80,6 @@ install_dep() {
 # Group A: No inter-dependencies, build in parallel.
 BUILD_DEP_URL_PATH="${QCA_VERSION}/qca-${QCA_VERSION}" \
     build_dep qca "$QCA_VERSION" "https://download.kde.org/stable/qca" \
-        -DBUILD_WITH_QT6=ON \
         -DBUILD_TESTS=OFF \
         -DBUILD_TOOLS=OFF \
         -DBUILD_PLUGINS=ossl &
@@ -89,7 +88,6 @@ qca_pid=$!
 BUILD_DEP_URL_PATH="$QTKEYCHAIN_VERSION" BUILD_DEP_SUFFIX=tar.gz \
     build_dep qtkeychain "$QTKEYCHAIN_VERSION" \
         "https://github.com/frankosterfeld/qtkeychain/archive/refs/tags" \
-        -DBUILD_WITH_QT6=ON \
         -DBUILD_TRANSLATIONS=OFF \
         -DBUILD_TEST_APPLICATION=OFF &
 qtkeychain_pid=$!
@@ -110,7 +108,8 @@ install_dep extra-cmake-modules
 # Group B: Depend on ECM.
 build_dep kconfig "$KF_FULLVER" "$KF_BASE_URL" \
     -DKCONFIG_USE_DBUS=OFF \
-    -DKCONFIG_USE_GUI=OFF &
+    -DKCONFIG_USE_GUI=OFF \
+    -DKCONFIG_USE_QML=OFF &
 kconfig_pid=$!
 
 build_dep kwindowsystem "$KF_FULLVER" "$KF_BASE_URL" &

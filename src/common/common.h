@@ -4,9 +4,6 @@
 
 
 #include <QtContainerFwd>
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-#include <QVariantMap>
-#endif
 
 class ClipboardDataGuard;
 class QByteArray;
@@ -82,3 +79,5 @@ bool canDropToTab(const QDropEvent &event);
  * Accept any proposed drop action, preferably "move" if items data available.
  */
 void acceptDrag(QDropEvent *event);
+
+QString formatDataSize(qint64 bytes);
