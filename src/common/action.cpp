@@ -26,6 +26,9 @@ void startProcess(QProcess *process, const QStringList &args, QIODevice::OpenMod
     QString executable = args.value(0);
 
     // Replace "copyq" command with full application path.
+    // Use applicationFilePath() (resolves to the binary inside the current
+    // FUSE mount for AppImages) so that child processes reuse the parent's
+    // mount instead of creating a new one.
     if (executable == "copyq")
         executable = QCoreApplication::applicationFilePath();
 

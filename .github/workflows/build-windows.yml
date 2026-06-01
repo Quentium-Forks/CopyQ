@@ -31,6 +31,8 @@ jobs:
   build:
     permissions:
       contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     name: Windows
     runs-on: windows-2025
     defaults:
@@ -48,12 +50,18 @@ jobs:
           filter: blob:none
 
       - name: Set up MSVC
-        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
-        with:
-          arch: x64
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -property installationPath
+          cmd /c "`"$vsPath\VC\Auxiliary\Build\vcvarsall.bat`" x64 && set" | ForEach-Object {
+              if ($_ -match '^([^=]+)=(.*)$') {
+                  "$($matches[1])=$($matches[2])" >> $env:GITHUB_ENV
+              }
+          }
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@d325aaf2a8baeeda41ad0b5d39f84a6af9bcf005 # v4
+        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4
         with:
           version: ${{ env.QT_VERSION }}
           arch: win64_msvc2022_64
@@ -65,7 +73,7 @@ jobs:
         run: echo "OPENSSL_ROOT_DIR=C:/Program Files/OpenSSL" >> "$GITHUB_ENV"
 
       - name: Enable sccache
-        uses: hendrikmuhs/ccache-action@33522472633dbd32578e909b315f5ee43ba878ce # v1.2.22
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # v1.2.23
         with:
           variant: sccache
           key: windows-msvc
@@ -81,7 +89,7 @@ jobs:
 
       - name: Cache KDE dependencies
         id: cache-deps
-        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/deps/install
           key: >-
@@ -98,7 +106,7 @@ jobs:
 
       - name: Save dependency cache
         if: github.event_name == 'push'
-        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ github.workspace }}/deps/install
           key: >-
@@ -113,18 +121,14 @@ jobs:
         uses: ./.github/actions/download-miniaudio
 
       - name: Build with CMake
-        uses: lukka/run-cmake@5d55ea7949e25f69f0ecb516d8d572297e03a956 # v10
         env:
           VCPKG_ROOT: ''
-        with:
-          configurePreset: Windows
-          buildPreset: Windows
-          configurePresetAdditionalArgs: >-
-            [
-            '-DWITH_NATIVE_NOTIFICATIONS=TRUE',
-            '-DWITH_QCA_ENCRYPTION=TRUE',
-            '-DWITH_KEYCHAIN=TRUE'
-            ]
+        run: |
+          cmake --preset Windows \
+            -DWITH_NATIVE_NOTIFICATIONS=TRUE \
+            -DWITH_QCA_ENCRYPTION=TRUE \
+            -DWITH_KEYCHAIN=TRUE
+          cmake --build --preset Windows
 
 
       - name: Get version string
@@ -199,41 +203,22 @@ jobs:
           APP_VERSION: ${{ steps.version.outputs.version }}
 
       - name: Upload portable zip
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: copyq-${{ steps.version.outputs.version }}.zip
           path: copyq-${{ steps.version.outputs.version }}.zip
           archive: false
 
       - name: Upload installer
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: copyq-${{ steps.version.outputs.version }}-setup.exe
           path: copyq-${{ steps.version.outputs.version }}-setup.exe
           archive: false
 
       - name: Upload tests
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: copyq-${{ steps.version.outputs.version }}-tests.zip
           path: copyq-${{ steps.version.outputs.version }}-tests
           archive: true
-
-
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-
-      - name: Upload to release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
-        with:
-          draft: true
-          files: |
-            copyq-*/*.zip
-            copyq-*/*.exe

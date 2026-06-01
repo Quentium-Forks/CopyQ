@@ -4,16 +4,16 @@ set -xeuo pipefail
 
 # Run only specific tests that are expected to work on Wayland.
 default_wayland_tests=(
-    configPath
-    readLog
-    commandShowHide
-    commandCopy
-    commandClipboard
-    commandHasClipboardFormat
-    clipboardToItem
-    itemToClipboard
-    avoidStoringPasswords
-    trayShowHideAction
+    testCore:configPath
+    testCore:readLog
+    testCore:commandShowHide
+    testCore:commandCopy
+    testCore:commandClipboard
+    testCore:commandHasClipboardFormat
+    testCore:clipboardToItem
+    testCore:itemToClipboard
+    testCore:avoidStoringPasswords
+    testCore:trayShowHideAction
 )
 
 kwin_wayland --virtual --socket=copyq-wayland &
@@ -29,7 +29,7 @@ export QT_QPA_PLATFORM=wayland
 # Smoke test the default session
 for i in {1..5}; do
     echo "Trying to start CopyQ server ($i)"
-    if ./copyq --start-server exit; then
+    if "${COPYQ_TESTS_EXECUTABLE:-./copyq}" --start-server exit; then
         break
     elif [[ $i == 5 ]]; then
         echo "❌ FAILED: Could not start CopyQ server"

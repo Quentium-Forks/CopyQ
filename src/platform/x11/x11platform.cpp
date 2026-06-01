@@ -6,6 +6,7 @@
 
 #include "app/applicationexceptionhandler.h"
 #include "common/log.h"
+#include "common/config.h"
 #include "common/textdata.h"
 
 #include <QApplication>
@@ -38,6 +39,7 @@ Icon=copyq
 GenericName=Clipboard Manager
 Type=Application
 Terminal=false
+StartupNotify=false
 X-KDE-autostart-after=panel
 X-KDE-StartupNotify=false
 X-KDE-UniqueApplet=true
@@ -216,7 +218,7 @@ void X11Platform::setAutostartEnabled(bool enable)
 #ifdef COPYQ_AUTOSTART_COMMAND
     QString cmd = COPYQ_AUTOSTART_COMMAND;
 #else
-    QString cmd = "\"" + QApplication::applicationFilePath() + "\"";
+    QString cmd = "\"" + applicationLaunchPath() + "\"";
 #endif
     const QString sessionName = qApp->property("CopyQ_session_name").toString();
     if ( !sessionName.isEmpty() )

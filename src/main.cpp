@@ -5,6 +5,7 @@
 #include "app/clipboardclient.h"
 #include "app/clipboardserver.h"
 #include "common/commandstatus.h"
+#include "common/config.h"
 #include "common/log.h"
 #include "common/messagehandlerforqt.h"
 #include "common/textdata.h"
@@ -21,6 +22,7 @@
 #include <QSettings>
 
 #include <exception>
+#include <cstring>
 
 Q_DECLARE_METATYPE(QByteArray*)
 
@@ -130,10 +132,18 @@ int startServer(int argc, char *argv[], QString sessionName)
     return app.exec();
 }
 
-void startServerInBackground(const QString &applicationPath, QString sessionName)
+void startServerInBackground(const char *argv0, const QString &sessionName)
 {
+    // QCoreApplication is not yet instantiated. Resolve the $APPIMAGE path
+    // directly so the detached server launches via the AppImage entry point.
+#ifdef COPYQ_WITH_APPIMAGE
+    const QString appImage = qEnvironmentVariable("APPIMAGE");
+    const QString executable = appImage.isEmpty() ? QString::fromUtf8(argv0) : appImage;
+#else
+    const QString executable = QString::fromUtf8(argv0);
+#endif
     const QStringList arguments{QStringLiteral("-s"), sessionName};
-    const bool started = QProcess::startDetached(applicationPath, arguments);
+    const bool started = QProcess::startDetached(executable, arguments);
 
     if (!started)
         log("Failed to start the server", LogError);
@@ -276,9 +286,26 @@ QByteArray logLabelForType(AppType appType, const QStringList &arguments)
 
 int startApplication(int argc, char **argv)
 {
+#ifdef COPYQ_WITH_APPIMAGE
+    // Override QT_PLUGIN_PATH so the bundled Qt plugins are used instead of
+    // any host-provided plugins (which may be linked against an incompatible
+    // Qt version).  The linuxdeploy AppRun sets APPDIR and LD_LIBRARY_PATH
+    // but does not handle Qt-specific env vars — qt.conf alone is not
+    // sufficient when the host session sets QT_PLUGIN_PATH.
+    if (const QByteArray appDir = qgetenv("APPDIR"); !appDir.isEmpty())
+        qputenv("QT_PLUGIN_PATH", appDir + "/usr/plugins");
+#endif
+
     setSessionName(QString());
 
     const AppArguments args = parseArguments(argc, argv);
+    // Qt normalizes --session to -session and treats it as a Session Manager
+    // restore request. Skip the "--" prefix so Qt sees "session" instead.
+    if (!args.sessionName.isEmpty() && argc > 1
+        && std::strcmp(argv[1], "--session") == 0)
+    {
+        argv[1] += 2;
+    }
 
     setLogLabel( logLabelForType(args.appType, args.arguments) );
     installMessageHandlerForQt();
@@ -301,6 +328,14 @@ int startApplication(int argc, char **argv)
     // If server hasn't been run yet and no argument were specified
     // then run this process as server.
     case AppType::Server:
+        // Set before QApplication construction so portal registration and
+        // taskbar icon matching use the correct app ID.
+        if (args.sessionName.isEmpty()) {
+            QGuiApplication::setDesktopFileName(QStringLiteral("com.github.hluk.copyq"));
+        } else {
+            QGuiApplication::setDesktopFileName(
+                QStringLiteral("com.github.hluk.copyq-%1").arg(args.sessionName));
+        }
         return startServer(argc, argv, args.sessionName);
 
     // If argument was specified and server is running
@@ -309,7 +344,7 @@ int startApplication(int argc, char **argv)
         return startClient(argc, argv, args.arguments, args.sessionName);
 
     case AppType::StartServerInBackground:
-        startServerInBackground( QString::fromUtf8(argv[0]), args.sessionName );
+        startServerInBackground(argv[0], args.sessionName);
         if (args.arguments.isEmpty())
             return 0;
         return startClient(argc, argv, args.arguments, args.sessionName);

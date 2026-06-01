@@ -66,43 +66,87 @@ installed or updated.
 On GNOME, new clipboard is not stored
 -------------------------------------
 
-The app requires CopyQ Clipboard Monitor GNOME extension to be enabled so it
-can watch clipboard changes and store them. The GNOME extension can be
-installed with CopyQ 14.0.0.
+The app requires the CopyQ Clipboard Monitor GNOME Shell extension to be
+enabled so it can watch clipboard changes and store them. The extension is
+shipped with CopyQ 14.0.0 and later.
+
+.. note::
+
+    The GNOME extension is only available when CopyQ is installed on the system
+    (e.g. from a package manager). It will **not** work when running CopyQ as a
+    Flatpak or AppImage because the extension cannot be registered with the
+    GNOME Shell from a sandboxed environment.
+
+.. seealso::
+
+    :ref:`known-issue-wayland`
 
 .. _known-issue-wayland:
 
-On Linux, global shortcuts, pasting or clipboard monitoring does not work
--------------------------------------------------------------------------
+On Linux, some features do not work under Wayland
+--------------------------------------------------
 
-This can be caused by running CopyQ under a **Wayland** window manager instead
-of the X11 server.
+When running CopyQ under a **Wayland** compositor, some features may not work
+depending on the desktop environment and the protocols it supports.
 
-Depending on the desktop environment, these features may not be supported:
+**Global shortcuts** work natively if the desktop environment provides
+Portal support (``xdg-desktop-portal``).
 
-- global shortcuts
-- clipboard monitoring
-- pasting from CopyQ and issuing copy command to other apps (that is passing
-  shortcuts to application)
+**Clipboard monitoring** works natively if the compositor supports the required
+Wayland protocol. This works on KDE Plasma, Sway, Hyprland and other
+wlroots-based compositors. On **GNOME**, this protocol is not supported, but
+CopyQ ships a GNOME Shell extension that provides clipboard monitoring instead
+(see :ref:`known-issue-gnome`). If clipboard monitoring does not work with
+either method, see :ref:`wayland-xwayland-fallback` below.
+
+Querying **state of keyboard modifiers** (for example pressed Shift, Ctrl etc.
+which can be useful for some custom commands) and **mouse position** (useful
+for positioning menus) **does not work** on Wayland.
+
+See the subsections below for other fixes.
+
+Workaround: Wayland Support command
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This can fix (depending on the desktop environment and installed tools):
+
+- pasting from CopyQ and issuing copy commands to other apps
 - screenshot functionality
 - retrieving and matching window titles
-- querying keyboard modifiers and mouse position
 
-**Workaround:** try using the **Wayland Support** command mentioned below or
-set ``QT_QPA_PLATFORM`` environment variable to run the app under **Xwayland**
-mode (additional package may be needed, for example:
-``xorg-x11-server-Xwayland`` in Fedora).
+Install the `Wayland Support
+<https://github.com/hluk/copyq-commands/tree/master#wayland-support>`__
+command to fix the features. It also requires some external tools to be
+installed on the system.
 
-For example, launch CopyQ with::
+.. _wayland-xwayland-fallback:
+
+Workaround: running under XWayland
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This can fix:
+
+- clipboard monitoring
+- setting and restoring window position (only window size is supported by most
+  Wayland compositors natively)
+
+Setting ``QT_QPA_PLATFORM=xcb`` environment variable forces CopyQ to run under
+XWayland mode. Unfortunately, it can cause clipboard monitoring to fail when
+the main window is closed, X11 connection errors, and other issues depending on
+the XWayland implementation.
+
+To start CopyQ under XWayland, use:
+
+.. code-block:: bash
 
     env QT_QPA_PLATFORM=xcb copyq
 
-If CopyQ autostarts, you can change ``Exec=...`` line in
+If CopyQ autostarts, you can change the ``Exec=...`` line in
 ``~/.config/autostart/copyq.desktop``::
 
     Exec=env QT_QPA_PLATFORM=xcb copyq
 
-For **Flatpak** application, see `this workaround
+For the **Flatpak** application, see `this workaround
 <https://github.com/hluk/CopyQ/issues/2948#issuecomment-2614271330>`__.
 
 .. note::
@@ -112,14 +156,27 @@ For **Flatpak** application, see `this workaround
 
 .. seealso::
 
-    `Wayland Support
-    <https://github.com/hluk/copyq-commands/tree/master/Scripts#wayland-support>`__
-    command reimplements some features on Wayland through external tools (see
-    `README <https://github.com/hluk/copyq-commands/blob/master/README.md>`__
-    for details on how to add the command).
-
     `Issue #27 <https://github.com/hluk/CopyQ/issues/27>`__
 
+    `Issue #3587 <https://github.com/hluk/CopyQ/issues/3587>`__
+    — ``QT_QPA_PLATFORM=xcb`` can break clipboard monitoring
+
+
+.. _known-issue-gnome-busy-cursor:
+
+On GNOME, busy cursor after selecting tray menu item
+----------------------------------------------------
+
+When using the AppIndicator/KStatusNotifierItem GNOME Shell extension, selecting
+an item from the CopyQ tray menu may cause a busy cursor for about 15 seconds.
+This is a bug in the extension — it triggers startup notification unconditionally
+without checking the application's ``StartupNotify`` desktop entry key.
+
+.. seealso::
+
+    - `Issue #3586 <https://github.com/hluk/CopyQ/issues/3586>`__
+    - `AppIndicator extension issue #443
+      <https://github.com/ubuntu/gnome-shell-extension-appindicator/issues/443>`__
 Scripting command "copy()" fails
 --------------------------------
 
@@ -147,3 +204,44 @@ An alternative under Windows is to use a Powershell script to override the ``cop
     Name=Override copy()
 
 The delays are added to make sure no focus issues occur and the text is copied to the clipboard.
+
+
+.. _known-issue-focus-stealing:
+
+CopyQ steals keyboard focus when showing window or menu
+-------------------------------------------------------
+
+When CopyQ shows its main window or tray menu (via global shortcut, tray icon
+click, or script), it transfers keyboard focus from the previously active
+window.  This can cause side effects in the target application such as:
+
+* File renames aborting (e.g. pressing F2 in file managers)
+* Combo boxes selecting all their content
+* Short-lived widgets dismissing (Start menu, PowerToys, extension dialogs)
+* Application menus closing
+* Auto-hide windows hiding (e.g. ConEmu Quake mode)
+
+.. seealso::
+    - `Issue #3540 <https://github.com/hluk/CopyQ/issues/3540>`__
+
+Workaround
+^^^^^^^^^^
+Use global shortcuts to cycle through clipboard history and
+paste without showing the CopyQ window.
+
+The `Cycle Items - Quick
+<https://github.com/hluk/copyq-commands/blob/master/README.md#cycle-items---quick>`__
+command previews items in notifications and automatically pastes the selected item
+when the shortcut modifier(s) are released―without ever opening the main
+window.
+
+A simpler alternative is to assign a global shortcut to ``next()`` or
+``previous()``. These functions cycle through clipboard history and update the system
+clipboard silently. For example, the following command updates to the next item:
+
+.. code-block:: js
+
+    next()
+
+The item can then be pasted with the normal system paste shortcut
+(``Ctrl+V`` or ``Cmd+V``).

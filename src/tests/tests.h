@@ -12,14 +12,14 @@ class QProcess;
 class QByteArray;
 
 /**
- * Tests for the application.
+ * Core tests for the application.
  */
-class Tests final : public QObject
+class CoreTests final : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit Tests(const TestInterfacePtr &test, QObject *parent = nullptr);
+    explicit CoreTests(const TestInterfacePtr &test, QObject *parent = nullptr);
 
 private slots:
     void initTestCase();
@@ -35,6 +35,7 @@ private slots:
     void commandVersion();
     void badCommand();
     void badSessionName();
+    void commandSession();
 
     void commandCatchExceptions();
 
@@ -180,6 +181,7 @@ private slots:
     void searchManyItems();
     void copyItems();
     void selectAndCopyOrder();
+    void copyItemsNullCharacter();
 
     void sortAndReverse();
 
@@ -335,6 +337,8 @@ private slots:
 
     void slowClipboard();
     void clipboardUriList();
+    void clipboardMimeSizeLimit();
+    void clipboardMimeSizeLimitConfig();
 
     void handleUnexpectedTypes();
 

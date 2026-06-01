@@ -71,3 +71,5 @@ elfbins.list
 # Files for utils/launchpad/build.sh
 .gitconfig
 launchpad.key
+compile_commands.json
+uv.lock

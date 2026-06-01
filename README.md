@@ -119,12 +119,17 @@ Install `copyq` package.
 
 ### Other Linux Distributions
 
-Install [Flatpak](https://flatpak.org/) and `com.github.hluk.copyq` from
-[Flathub](https://flathub.org/).
+Download the latest **AppImage** from
+[GitHub Releases](https://github.com/hluk/CopyQ/releases):
 
 ```bash
-flatpak install flathub com.github.hluk.copyq
+chmod +x CopyQ-*.AppImage
+./CopyQ-*.AppImage
 ```
+
+Alternatively, install [Flatpak](https://flatpak.org/) and `com.github.hluk.copyq` from
+[Flathub](https://flathub.org/apps/com.github.hluk.copyq).
+See [Flathub Setup](https://flathub.org/setup) for initial Flatpak/Flathub configuration.
 
 Start CopyQ from the menu or with the following command:
 

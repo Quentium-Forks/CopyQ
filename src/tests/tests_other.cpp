@@ -49,7 +49,7 @@ QVariantMap secretData(const QByteArray &text)
 } // namespace
 
 
-void Tests::pipingCommands()
+void CoreTests::pipingCommands()
 {
     const auto tab = testTab(1);
     const Args args = Args("tab") << tab << "separator" << ",";
@@ -67,7 +67,7 @@ void Tests::pipingCommands()
     WAIT_ON_OUTPUT(args << "read" << "0" << "1", "TEST123,hello");
 }
 
-void Tests::copyPasteCommands()
+void CoreTests::copyPasteCommands()
 {
     const QByteArray commands =
             "[Commands]\n"
@@ -87,7 +87,7 @@ void Tests::copyPasteCommands()
     RUN("commands().length", "2\n");
 }
 
-void Tests::toggleClipboardMonitoring()
+void CoreTests::toggleClipboardMonitoring()
 {
     const QByteArray data1 = generateData();
     TEST( m_test->setClipboard(data1) );
@@ -113,7 +113,7 @@ void Tests::toggleClipboardMonitoring()
     WAIT_ON_OUTPUT("read" << "0", data3);
 }
 
-void Tests::clipboardToItem()
+void CoreTests::clipboardToItem()
 {
     TEST( m_test->setClipboard("TEXT1") );
     RUN("clipboard", "TEXT1");
@@ -131,7 +131,63 @@ void Tests::clipboardToItem()
     WAIT_ON_OUTPUT("read" << "0", bytes);
 }
 
-void Tests::itemToClipboard()
+void CoreTests::clipboardMimeSizeLimit()
+{
+    // Restart server with size limits: text/plain max 10 bytes, all other text/* rejected.
+    // Use text/plain.* to also match text/plain;charset=utf-8 (synthesized on Windows/macOS).
+    TEST( m_test->stopServer() );
+    m_test->setEnv("COPYQ_CLIPBOARD_MIME_SIZE_LIMIT", "text/plain.*:10;text/.*:0");
+    TEST( m_test->startServer() );
+
+    // Data under the limit should be stored.
+    TEST( m_test->setClipboard("SHORT") );
+    WAIT_ON_OUTPUT("read" << "0", "SHORT");
+
+    // Oversized text/plain should be skipped.
+    // Use the QVariantMap overload to set clipboard without server-side verification,
+    // since the size limit also affects the clipboard scripting command.
+    const QVariantMap oversizedData{{"text/plain", "THIS TEXT IS OVER TEN BYTES"}};
+    TEST( m_test->setClipboard(oversizedData) );
+
+    // Set another small item; if the oversized data were stored it would
+    // appear between SHORT and AFTER, changing item count to 3.
+    TEST( m_test->setClipboard("AFTER") );
+    WAIT_ON_OUTPUT("read" << "0" << "1" << "2", "AFTER\nSHORT\n");
+
+    // HTML with plain text: HTML should be rejected (text/.*:0), plain text kept.
+    const QVariantMap htmlData{{mimeHtml, "<b>hello</b>"}, {mimeText, "hello"}};
+    TEST( m_test->setClipboard(htmlData) );
+    WAIT_ON_OUTPUT("read" << "0" << "1" << "2" << "3", "hello\nAFTER\nSHORT\n");
+    RUN("read" << mimeHtml << "0", "");
+}
+
+void CoreTests::clipboardMimeSizeLimitConfig()
+{
+    // Config option path: under-limit stored, over-limit skipped.
+    // Use text/plain.* to also match text/plain;charset=utf-8 (synthesized on Windows/macOS).
+    RUN("config" << "clipboard_mime_size_limit" << "text/plain.*:10;text/.*:0", "text/plain.*:10;text/.*:0\n");
+
+    TEST( m_test->setClipboard("SHORT") );
+    WAIT_ON_OUTPUT("read" << "0", "SHORT");
+
+    // Oversized text/plain skipped.
+    const QVariantMap oversizedData{{"text/plain", "THIS TEXT IS OVER TEN BYTES"}};
+    TEST( m_test->setClipboard(oversizedData) );
+    TEST( m_test->setClipboard("AFTER") );
+    WAIT_ON_OUTPUT("read" << "0" << "1" << "2", "AFTER\nSHORT\n");
+
+    // Blocked format with allowed format: first-match-wins.
+    RUN("config" << "clipboard_mime_size_limit" << "text/uri-list:0;.*:100M", "text/uri-list:0;.*:100M\n");
+    const QVariantMap uriData{{"text/uri-list", "https://example.com"}, {"text/plain", "URI_KEPT"}};
+    TEST( m_test->setClipboard(uriData) );
+    WAIT_ON_OUTPUT("read" << "0", "URI_KEPT");
+    RUN("read" << "text/uri-list" << "0", "");
+
+    // Restore default.
+    RUN("config" << "clipboard_mime_size_limit" << "", "\n");
+}
+
+void CoreTests::itemToClipboard()
 {
     RUN("add" << "TESTING2" << "TESTING1", "");
     RUN("read" << "0" << "1", "TESTING1\nTESTING2");
@@ -158,7 +214,7 @@ void Tests::itemToClipboard()
     RUN("clipboard", "TESTING1");
 }
 
-void Tests::tabAdd()
+void CoreTests::tabAdd()
 {
     const QString tab = testTab(1);
     const Args args = Args("tab") << tab << "separator" << " ";
@@ -179,7 +235,7 @@ void Tests::tabAdd()
     RUN(args << "read" << "0" << "1" << "2", "abc def ghi");
 }
 
-void Tests::tabRemove()
+void CoreTests::tabRemove()
 {
     const QString tab = testTab(1);
     const Args args = Args("tab") << tab << "separator" << " ";
@@ -192,7 +248,7 @@ void Tests::tabRemove()
     RUN_EXPECT_ERROR("removetab" << tab, CommandException);
 }
 
-void Tests::tabIcon()
+void CoreTests::tabIcon()
 {
     const QString tab0 = testTab(1);
     const QString tab = testTab(2);
@@ -208,7 +264,7 @@ void Tests::tabIcon()
     RUN("tabicon" << tab, "\n");
 }
 
-void Tests::action()
+void CoreTests::action()
 {
     const Args args = Args("tab") << testTab(1);
     const Args argsAction = Args(args) << "action";
@@ -235,7 +291,7 @@ void Tests::action()
     RUN(args << "read" << "0" << "1" << "2", "C\nB\nA");
 }
 
-void Tests::renameTab()
+void CoreTests::renameTab()
 {
     const QString tab1 = testTab(1);
     const QString tab2 = testTab(2);
@@ -269,7 +325,7 @@ void Tests::renameTab()
     QVERIFY( !hasTab(tab2) );
 }
 
-void Tests::renameClipboardTab()
+void CoreTests::renameClipboardTab()
 {
     const QString newClipboardTabName = clipboardTabName + QStringLiteral("2");
     RUN("config" << "tray_tab" << clipboardTabName, clipboardTabName + QStringLiteral("\n"));
@@ -290,7 +346,7 @@ void Tests::renameClipboardTab()
     RUN("tab", newClipboardTabName + "\n");
 }
 
-void Tests::importExportTab()
+void CoreTests::importExportTab()
 {
     const QString tab = testTab(1);
     const Args args = Args("tab") << tab << "separator" << " ";
@@ -331,7 +387,7 @@ void Tests::importExportTab()
     RUN(args << "read" << "0" << "1" << "2" << "3", "012 abc def ghi");
 }
 
-void Tests::removeAllFoundItems()
+void CoreTests::removeAllFoundItems()
 {
     auto args = Args("add");
     for (int i = 0; i < 50; ++i) {
@@ -350,7 +406,7 @@ void Tests::removeAllFoundItems()
     RUN("read" << "0" << "1" << "2", "b49\nb48\nb47");
 }
 
-void Tests::nextPrevious()
+void CoreTests::nextPrevious()
 {
     const QString tab = testTab(1);
     const Args args = Args("tab") << tab;
@@ -376,7 +432,7 @@ void Tests::nextPrevious()
     WAIT_FOR_CLIPBOARD("A");
 }
 
-void Tests::externalEditor()
+void CoreTests::externalEditor()
 {
     const QString tab = testTab(1);
     const Args args = Args("tab") << tab;
@@ -451,7 +507,7 @@ void Tests::externalEditor()
 #undef EDIT
 }
 
-void Tests::nextPreviousTab()
+void CoreTests::nextPreviousTab()
 {
     const auto tab1 = testTab(1);
     const auto tab2 = testTab(2);
@@ -483,7 +539,7 @@ void Tests::nextPreviousTab()
     }
 }
 
-void Tests::itemPreview()
+void CoreTests::itemPreview()
 {
     const auto tab1 = testTab(1);
     RUN("tab" << tab1 << "add" << "def" << "abc", "");
@@ -511,7 +567,7 @@ void Tests::itemPreview()
     RUN("preview", "false\n");
 }
 
-void Tests::openAndSavePreferences()
+void CoreTests::openAndSavePreferences()
 {
 #ifdef Q_OS_MAC
     SKIP("Can't focus configuration checkboxes on OS X");
@@ -529,7 +585,7 @@ void Tests::openAndSavePreferences()
     WAIT_ON_OUTPUT("config" << "check_clipboard", "true\n");
 }
 
-void Tests::pasteFromMainWindow()
+void CoreTests::pasteFromMainWindow()
 {
     RUN("config"
         << "activate_closes" << "true"
@@ -559,7 +615,7 @@ void Tests::pasteFromMainWindow()
     );
 }
 
-void Tests::pasteNext()
+void CoreTests::pasteNext()
 {
     const auto tab1 = testTab(1);
     RUN("setCurrentTab" << tab1, "");
@@ -575,7 +631,7 @@ void Tests::pasteNext()
     RUN("tab" << tab1 << "read" << "0", "NEW test2");
 }
 
-void Tests::configAutostart()
+void CoreTests::configAutostart()
 {
     SKIP_ON_ENV("COPYQ_TESTS_NO_AUTOSTART");
     RUN("config" << "autostart" << "true", "true\n");
@@ -584,7 +640,7 @@ void Tests::configAutostart()
     RUN("config" << "autostart", "false\n");
 }
 
-void Tests::envVariablePaths()
+void CoreTests::envVariablePaths()
 {
     {
         const auto path = QDir::home().absoluteFilePath("copyq-settings");
@@ -613,7 +669,7 @@ void Tests::envVariablePaths()
     }
 }
 
-void Tests::configTabs()
+void CoreTests::configTabs()
 {
     const QString sep = QStringLiteral("\n");
     RUN("config" << "tabs", clipboardTabName + sep);
@@ -632,7 +688,7 @@ void Tests::configTabs()
     RUN("tab", tab1 + sep + tab2 + sep + clipboardTabName + sep);
 }
 
-void Tests::selectedItems()
+void CoreTests::selectedItems()
 {
     const auto tab1 = testTab(1);
     const Args args = Args("tab") << tab1;
@@ -673,7 +729,7 @@ void Tests::selectedItems()
     RUN(print, tab2 + ",c:0,s:0\n");
 }
 
-void Tests::synchronizeInternalCommands()
+void CoreTests::synchronizeInternalCommands()
 {
     // Keep internal commands synced with the latest version
     // but allow user to change some attributes.
@@ -700,7 +756,7 @@ void Tests::synchronizeInternalCommands()
     RUN("commands()[0].cmd", "copyq: toggle()\n");
 }
 
-void Tests::utilityCommands()
+void CoreTests::utilityCommands()
 {
     // queryKeyboardModifiers
     RUN("queryKeyboardModifiers()", "");
@@ -718,7 +774,7 @@ void Tests::utilityCommands()
     QCOMPARE(QPoint(2, 3), QCursor::pos());
 }
 
-void Tests::setTabName()
+void CoreTests::setTabName()
 {
     const auto script = R"(
         tab('1')
@@ -733,7 +789,7 @@ void Tests::setTabName()
     RUN(script, "1,0");
 }
 
-void Tests::abortInputReader()
+void CoreTests::abortInputReader()
 {
     QProcess p;
     p.start(
@@ -745,7 +801,7 @@ void Tests::abortInputReader()
     QCOMPARE( p.readAllStandardOutput(), "" );
 }
 
-void Tests::changeAlwaysOnTop()
+void CoreTests::changeAlwaysOnTop()
 {
     // The window should be still visible and focused after changing always-on-top flag.
     RUN("visible", "true\n");
@@ -779,7 +835,7 @@ void Tests::changeAlwaysOnTop()
     WAIT_ON_OUTPUT("focused", "false\n");
 }
 
-void Tests::networkTests()
+void CoreTests::networkTests()
 {
     // networkHeaders (no network needed)
     RUN("print(NetworkRequest().headers['User-Agent'])", copyqUserAgent());
@@ -828,7 +884,7 @@ void Tests::networkTests()
     }
 }
 
-void Tests::pluginNotInstalled()
+void CoreTests::pluginNotInstalled()
 {
     RUN_EXPECT_ERROR_WITH_STDERR(
         "plugins.bad_plugin", CommandException,
@@ -836,7 +892,7 @@ void Tests::pluginNotInstalled()
     );
 }
 
-void Tests::startServerAndRunCommand()
+void CoreTests::startServerAndRunCommand()
 {
     RUN("--start-server" << "tab" << testTab(1) << "write('TEST');read(0)", "TEST");
 
@@ -864,7 +920,7 @@ void Tests::startServerAndRunCommand()
     while ( run(Args("exit();sleep(10000)")) == 0 && t.sleep() ) {}
 }
 
-void Tests::avoidStoringPasswords()
+void CoreTests::avoidStoringPasswords()
 {
     TEST( m_test->setClipboard(secretData("secret")) );
     WAIT_ON_OUTPUT("clipboard", "secret");
@@ -876,7 +932,7 @@ void Tests::avoidStoringPasswords()
     RUN("read" << "0" << "1" << "2", "secret\n\n");
 }
 
-void Tests::scriptsForPasswords()
+void CoreTests::scriptsForPasswords()
 {
     const auto script = R"(
         setCommands([{
@@ -893,7 +949,7 @@ void Tests::scriptsForPasswords()
     RUN("count", "1\n");
 }
 
-void Tests::currentClipboardOwner()
+void CoreTests::currentClipboardOwner()
 {
     const auto script = R"(
         setCommands([
@@ -942,7 +998,7 @@ void Tests::currentClipboardOwner()
     RUN("read('application/x-copyq-owner-test', 0)", "TEST5");
 }
 
-void Tests::saveLargeItem()
+void CoreTests::saveLargeItem()
 {
     const auto tab = testTab(1);
     const auto args = Args("tab") << tab;
@@ -983,7 +1039,7 @@ void Tests::saveLargeItem()
     RUN(args << "getItem(0)['application/x-copyq-test-data'].length", "260000\n");
 }
 
-void Tests::clipboardUriList()
+void CoreTests::clipboardUriList()
 {
     const auto script = R"(
         setCommands([
@@ -1002,7 +1058,7 @@ void Tests::clipboardUriList()
     WAIT_ON_OUTPUT("clipboard(mimeUriList)", uri);
 }
 
-void Tests::singleClipboardProvider()
+void CoreTests::singleClipboardProvider()
 {
     // Start multiple provider processes. The server should stop all but
     // the last one that registers.
