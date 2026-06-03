@@ -50,7 +50,7 @@ jobs:
 
       - name: Install libraries
         run: |
-          sudo apt-get install -y qt6-base-dev qt6-base-dev-tools qt6-base-private-dev qt6-declarative-dev qt6-l10n-tools qt6-tools-dev qt6-tools-dev-tools qt6-wayland qt6-wayland-dev qt6-wayland-dev-tools qtkeychain-qt6-dev libqt6svg6-dev libqt6waylandclient6 libwayland-dev libxfixes-dev libxtst-dev libgl1-mesa-dev libvulkan-dev
+          sudo apt-get install -y qt6-base-dev qt6-base-dev-tools qt6-base-private-dev qt6-declarative-dev qt6-l10n-tools qt6-tools-dev qt6-tools-dev-tools qt6-wayland qt6-wayland-dev qt6-wayland-dev-tools qtkeychain-qt6-dev libqt6svg6-dev libqt6waylandclient6 libwayland-dev libxfixes-dev libxtst-dev libgl-dev libvulkan-dev
           sudo apt-get install -y libfuse2
 
       - name: Install libraries for noble
@@ -91,7 +91,7 @@ jobs:
           cat ${{ github.workspace }}/debian/changelog
 
       - name: Publish PPA package
-        uses: Quentium-Forks/publish-ppa-package@main
+        uses: yuezk/publish-ppa-package@main
         if: github.event_name != 'workflow_dispatch' && matrix.codename == 'jammy'
         with:
           tarball: ${{ github.workspace }}/release/copyq-*.tar.gz

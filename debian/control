@@ -22,13 +22,13 @@ Build-Depends:
  libwayland-dev,
  libxfixes-dev,
  libxtst-dev,
- libgl1-mesa-dev,
+ libgl-dev,
  libvulkan-dev,
  libqca-qt6-dev <trixie> <forky> <noble> <resolute>,
  libqca-qt6-plugins <trixie> <forky> <noble> <resolute>,
  libminiaudio-dev <trixie> <forky> <noble> <resolute>,
  libkf6guiaddons-dev <trixie> <forky> <resolute>,
-Standards-Version: 4.7.3
+Standards-Version: 4.7.4
 Rules-Requires-Root: no
 Vcs-Browser: https://github.com/Quentium-Forks/CopyQ
 Vcs-Git: https://github.com/Quentium-Forks/CopyQ.git
