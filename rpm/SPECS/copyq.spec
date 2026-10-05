@@ -1,5 +1,5 @@
 Name:       copyq
-Version:    16.0.0.24
+Version:    17.0.0.0
 Release:    1%{?dist}
 Summary:    Advanced clipboard manager
 
@@ -29,7 +29,7 @@ else
     EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_AUDIO=OFF"
 fi
 # Check if kf6 dependencies are installed
-if rpm -q kf6-kguiaddons-devel; then
+if rpm -q kf6-knotifications-devel; then
     EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=ON"
 else
     EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=OFF"

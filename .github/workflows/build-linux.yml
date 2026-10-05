@@ -161,7 +161,7 @@ jobs:
             ${{ matrix.custom_qt && 'libssl-dev libsecret-1-dev pkg-config' || '' }}
             ${{ matrix.coverage && 'procps' || '' }}
             ${{ matrix.test_gnome && 'gnome-shell gnome-shell-common glib2.0-bin' || '' }}
-            ${{ matrix.with_native_notifications && 'libkf6notifications-dev kf6-kstatusnotifieritem-dev' || '' }}
+            ${{ matrix.with_native_notifications && 'libkf6notifications-dev libkf6statusnotifieritem-dev' || '' }}
             ${{ matrix.with_kf6_wayland_clipboard && 'libkf6guiaddons-dev' || '' }}
             ${{ matrix.appimage && 'libfuse2t64' || '' }}
           RETRY_COUNT: "4"

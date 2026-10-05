@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION=16.0.0.24
+VERSION=17.0.0.0
 DIR=copyq-$VERSION
 ARCH=$(uname -m)
 ARCH_DPKG=$(dpkg --print-architecture)
@@ -21,7 +21,7 @@ else
     EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_AUDIO=OFF"
 fi
 # Check if kf6 dependencies are installed
-if dpkg -s libkf6guiaddons-dev > /dev/null 2>&1; then
+if dpkg -s libkf6notifications-dev > /dev/null 2>&1; then
     EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=ON"
 else
     EXTRA_FLAGS="$EXTRA_FLAGS -DWITH_NATIVE_NOTIFICATIONS=OFF"

@@ -89,7 +89,9 @@ On Debian 13 or Ubuntu 25.04 and newer, you can also install `KF6` packages:
 ::
 
     sudo apt install \
-      libkf6guiaddons-dev
+      libkf6guiaddons-dev \
+      libkf6notifications-dev \
+      libkf6statusnotifieritem-dev
 
 Fedora / RHEL / CentOS
 ^^^^^^^^^^^^^^^^^^^^^^

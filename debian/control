@@ -28,6 +28,8 @@ Build-Depends:
  libqca-qt6-plugins <trixie> <forky> <noble> <resolute>,
  libminiaudio-dev <trixie> <forky> <noble> <resolute>,
  libkf6guiaddons-dev <trixie> <forky> <resolute>,
+ libkf6notifications-dev <trixie> <forky> <resolute>,
+ libkf6statusnotifieritem-dev <trixie> <forky> <resolute>,
 Standards-Version: 4.7.4
 Rules-Requires-Root: no
 Vcs-Browser: https://github.com/Quentium-Forks/CopyQ
