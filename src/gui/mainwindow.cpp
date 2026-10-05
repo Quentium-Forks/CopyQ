@@ -547,7 +547,7 @@ QVariantMap exportSettings(const QStringList &tabs, bool exportConfiguration, bo
     QVariantList commandsList;
     if (exportCommands) {
         log("Exporting commands");
-        Settings settings(getConfigurationFilePath("-commands.ini"));
+        Settings settings(configurationFilePath("-commands.ini"));
         const int commandCount = settings.beginReadArray(QLatin1String("Commands"));
         commandsList.reserve(commandCount);
         for (int i = 0; i < commandCount; ++i) {
@@ -1985,7 +1985,7 @@ void MainWindow::updateToolBar()
         } else if ( !action->icon().isNull() ) {
             act = m_toolBar->addAction(QString());
 
-            const auto update = [=]() {
+            const auto update = [action, act]() {
                 const QIcon icon = action->icon();
                 act->setIcon(icon);
 
@@ -2288,9 +2288,10 @@ bool MainWindow::exportDataV4(QDataStream *out, const QStringList &tabs, bool ex
     const QVariantMap data = exportSettings(tabs, exportConfiguration, exportCommands);
     (*out) << data;
 
+    const Tabs tabProps;
     for (const auto &tab : tabs) {
         bool ok;
-        QVariantMap tabMap = exportTabData(tab, &ok);
+        QVariantMap tabMap = exportTabData(tab, tabProps, &ok);
         if (!ok)
             return false;
         if (!tabMap.isEmpty())
@@ -2315,9 +2316,10 @@ bool MainWindow::exportDataV5(QDataStream *out, const QStringList &tabs, bool ex
 
     serializeData(out, dataMap, -1, &encryptionKey);
 
+    const Tabs tabProps;
     for (const auto &tab : tabs) {
         bool ok;
-        QVariantMap tabMap = exportTabData(tab, &ok);
+        QVariantMap tabMap = exportTabData(tab, tabProps, &ok);
         if (!ok)
             return false;
         if (!tabMap.isEmpty()) {
@@ -2329,7 +2331,7 @@ bool MainWindow::exportDataV5(QDataStream *out, const QStringList &tabs, bool ex
     return out->status() == QDataStream::Ok;
 }
 
-QVariantMap MainWindow::exportTabData(const QString &tab, bool *ok)
+QVariantMap MainWindow::exportTabData(const QString &tab, const Tabs &tabProps, bool *ok)
 {
     *ok = true;
     const auto i = findTabIndex(tab);
@@ -2364,7 +2366,7 @@ QVariantMap MainWindow::exportTabData(const QString &tab, bool *ok)
         return {};
     }
 
-    const auto iconName = getIconNameForTabName(tabName);
+    const auto iconName = tabProps.tabProperties(tabName).iconName;
 
     QVariantMap tabMap;
     tabMap[QStringLiteral("name")] = tabName;
@@ -2414,7 +2416,7 @@ void MainWindow::importSelected(const ImportSelection &sel)
             m_commandDialog = nullptr;
         }
 
-        Settings settings(getConfigurationFilePath("-commands.ini"));
+        Settings settings(configurationFilePath("-commands.ini"));
 
         const QString commandGroup = QStringLiteral("Command");
         const QString commandsGroup = QStringLiteral("Commands");
@@ -2845,7 +2847,7 @@ bool MainWindow::eventFilter(QObject *object, QEvent *ev)
     if (type != QEvent::KeyPress && type != QEvent::ShortcutOverride)
         return false;
 
-    QKeyEvent *event = static_cast<QKeyEvent *>(ev);
+    auto *event = static_cast<QKeyEvent *>(ev);
     const int key = event->key();
     const Qt::KeyboardModifiers modifiers = event->modifiers();
 
@@ -3412,10 +3414,8 @@ void MainWindow::tabChanged(int current, int)
         if (c) {
             c->filterItems( browseMode() ? nullptr : ui->searchBar->filter() );
 
-            if ( current >= 0 ) {
-                if( !c->currentIndex().isValid() && isVisible() ) {
-                    c->setCurrent(0);
-                }
+            if ( current >= 0 && !c->currentIndex().isValid() && isVisible() ) {
+                c->setCurrent(0);
             }
 
             setTabOrder(ui->searchBar, c);
@@ -3566,7 +3566,7 @@ QVariant MainWindow::config(const QVariantList &nameValue)
     return result;
 }
 
-QString MainWindow::configDescription()
+QString MainWindow::configDescription() const
 {
     ConfigurationManager configurationManager;
     QStringList options = configurationManager.options();

@@ -70,6 +70,15 @@ TrayMenu::TrayMenu(QWidget *parent)
     initSingleShotTimer( &m_timerUpdateActiveAction, 0, this, &TrayMenu::doUpdateActiveAction );
     setAttribute(Qt::WA_InputMethodEnabled);
 
+#ifdef Q_OS_WIN
+    // Prepare search before QMenu sizes and positions the popup.
+    connect(this, &QMenu::aboutToShow, this, [this] {
+        search(QString());
+        if (!m_searchAction.isNull())
+            m_searchAction->setVisible(true);
+    });
+#endif
+
     // WORKAROUND: Starting with Qt 6.9 (qtbase commit 8c0dd12f), popups
     // without a focused transient parent are rejected with an asynchronous
     // close event instead of falling back to a toplevel.  When the tray
@@ -100,7 +109,7 @@ void TrayMenu::updateTextFromData(QAction *act, const QVariantMap &data)
 
 bool TrayMenu::updateIconFromData(QAction *act, const QVariantMap &data)
 {
-    QWidget *menu = qobject_cast<QWidget*>(act->parent());
+    auto *menu = qobject_cast<QWidget*>(act->parent());
     if (menu == nullptr)
         return false;
 
@@ -393,8 +402,12 @@ void TrayMenu::setSearchMenuItem(const QString &text)
         const QIcon icon = getIcon("edit-find", IconMagnifyingGlass);
         m_searchAction = new QAction(icon, text, this);
         m_searchAction->setEnabled(false);
+#ifdef Q_OS_WIN
+        m_searchAction->setVisible(true);
+#else
         // Search menu item is hidden by default, see showEvent().
         m_searchAction->setVisible( isVisible() );
+#endif
         insertAction( actions().value(0), m_searchAction );
     } else {
         m_searchAction->setText(text);
@@ -403,7 +416,7 @@ void TrayMenu::setSearchMenuItem(const QString &text)
 
 void TrayMenu::onClipboardItemActionTriggered()
 {
-    QAction *act = qobject_cast<QAction *>(sender());
+    auto *act = qobject_cast<QAction *>(sender());
     Q_ASSERT(act != nullptr);
 
     const auto actionData = act->data().toMap();

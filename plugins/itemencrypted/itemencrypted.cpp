@@ -126,7 +126,7 @@ public:
 
             const bool needsSecring = version.major == 2 && version.minor == 0;
 
-            const QString path = getConfigurationFilePath("");
+            const QString path = configurationFilePath("");
             m_pubring = path + ".pub";
             m_pubringNative = QDir::toNativeSeparators(m_pubring);
             if (needsSecring) {
@@ -654,7 +654,7 @@ void ItemEncryptedLoader::loadSettings(const QSettings &settings)
 QWidget *ItemEncryptedLoader::createSettingsWidget(QWidget *parent)
 {
     ui.reset(new Ui::ItemEncryptedSettings);
-    QWidget *w = new QWidget(parent);
+    auto *w = new QWidget(parent);
     ui->setupUi(w);
 
     ui->plainTextEditEncryptTabs->setPlainText(

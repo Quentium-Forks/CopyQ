@@ -45,7 +45,7 @@ QRegularExpression anchoredMimePattern(const QString &pattern)
 
 qint64 parseByteSize(const QString &str, bool *ok)
 {
-    const QStringView s = QStringView(str).trimmed();
+    const auto s = QStringView(str).trimmed();
     if (s.isEmpty()) {
         // Empty size (e.g. "text/plain:") means no limit.
         *ok = true;
@@ -151,6 +151,10 @@ public:
         if (t > 500)
             log( QStringLiteral("ELAPSED %1 ms accessing [%2:%3]").arg(t).arg(m_type, m_format), LogWarning );
     }
+    ElapsedGuard(const ElapsedGuard &) = delete;
+    ElapsedGuard &operator=(const ElapsedGuard &) = delete;
+    ElapsedGuard(ElapsedGuard &&) = delete;
+    ElapsedGuard &operator=(ElapsedGuard &&) = delete;
 private:
     QString m_type;
     QString m_format;

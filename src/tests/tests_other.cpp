@@ -268,7 +268,7 @@ void CoreTests::action()
 {
     const Args args = Args("tab") << testTab(1);
     const Args argsAction = Args(args) << "action";
-    const QString action = QString::fromLatin1("copyq %1 %2").arg(args.join(" "));
+    const auto action = QString::fromLatin1("copyq %1 %2").arg(args.join(" "));
 
     // action with size
     RUN(argsAction << action.arg("size") << "", "");
@@ -370,6 +370,10 @@ void CoreTests::importExportTab()
     struct CurrentDirectoryGuard {
         CurrentDirectoryGuard() : oldDir(QDir::currentPath()) {}
         ~CurrentDirectoryGuard() { QDir::setCurrent(oldDir); }
+        CurrentDirectoryGuard(const CurrentDirectoryGuard &) = delete;
+        CurrentDirectoryGuard &operator=(const CurrentDirectoryGuard &) = delete;
+        CurrentDirectoryGuard(CurrentDirectoryGuard &&) = delete;
+        CurrentDirectoryGuard &operator=(CurrentDirectoryGuard &&) = delete;
         const QString oldDir;
     } currentDirectoryGuard;
 
@@ -851,18 +855,18 @@ void CoreTests::networkTests()
         return;
 
     // networkGet
-    RUN("r = networkGet('https://httpcan.org'); r.status", "200\n");
+    RUN("r = networkGet('https://httpbun.com'); r.status", "200\n");
 
     // networkPost
     {
         const auto script = R"(
             r = NetworkRequest();
             r.headers['Content-Type'] = 'text/plain';
-            s = r.request('POST', 'https://httpcan.org/post?hello=1', 'Hello');
+            s = r.request('POST', 'https://httpbun.com/post?hello=1', 'Hello');
             json = s.data;
             try {
                 data = JSON.parse(str(json));
-                userAgent = data.headers['user-agent'].replace(/\\/.*/, '/xyz');
+                userAgent = data.headers['User-Agent'].replace(/\\/.*/, '/xyz');
                 [data.data, JSON.stringify(data.args), userAgent, s.status];
             } catch (e) {
                 [`Error parsing JSON response: ${e}\n`, json, s.status];
@@ -872,15 +876,15 @@ void CoreTests::networkTests()
     }
 
     // networkRedirects
-    RUN("r = networkGet('https://httpcan.org/redirect-to?url=https://httpcan.org'); r.status", "302\n");
+    RUN("r = networkGet('https://httpbun.com/redirect-to?url=https://httpbun.com'); r.status", "302\n");
     {
         const auto script = R"(
             r = NetworkRequest();
             r.maxRedirects = 1;
-            s = r.request('GET', 'https://httpcan.org');
+            s = r.request('GET', 'https://httpbun.com');
             [s.status, s.url]
         )";
-        RUN(script, "200\nhttps://httpcan.org\n");
+        RUN(script, "200\nhttps://httpbun.com\n");
     }
 }
 

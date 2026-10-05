@@ -140,7 +140,7 @@ void startServerInBackground(const char *argv0, const QString &sessionName)
     const QString appImage = qEnvironmentVariable("APPIMAGE");
     const QString executable = appImage.isEmpty() ? QString::fromUtf8(argv0) : appImage;
 #else
-    const QString executable = QString::fromUtf8(argv0);
+    const auto executable = QString::fromUtf8(argv0);
 #endif
     const QStringList arguments{QStringLiteral("-s"), sessionName};
     const bool started = QProcess::startDetached(executable, arguments);
@@ -330,12 +330,7 @@ int startApplication(int argc, char **argv)
     case AppType::Server:
         // Set before QApplication construction so portal registration and
         // taskbar icon matching use the correct app ID.
-        if (args.sessionName.isEmpty()) {
-            QGuiApplication::setDesktopFileName(QStringLiteral("com.github.hluk.copyq"));
-        } else {
-            QGuiApplication::setDesktopFileName(
-                QStringLiteral("com.github.hluk.copyq-%1").arg(args.sessionName));
-        }
+        QGuiApplication::setDesktopFileName(QStringLiteral("com.github.hluk.copyq"));
         return startServer(argc, argv, args.sessionName);
 
     // If argument was specified and server is running

@@ -215,9 +215,7 @@ void ItemText::onSelectionChanged()
     m_elidedFragment = QTextDocumentFragment();
 }
 
-ItemTextLoader::ItemTextLoader()
-{
-}
+ItemTextLoader::ItemTextLoader() = default;
 
 ItemTextLoader::~ItemTextLoader() = default;
 
@@ -286,7 +284,7 @@ void ItemTextLoader::loadSettings(const QSettings &settings)
 QWidget *ItemTextLoader::createSettingsWidget(QWidget *parent)
 {
     ui.reset(new Ui::ItemTextSettings);
-    QWidget *w = new QWidget(parent);
+    auto *w = new QWidget(parent);
     ui->setupUi(w);
     ui->checkBoxUseRichText->setChecked(m_useRichText);
     ui->spinBoxMaxLines->setValue(m_maxLines);

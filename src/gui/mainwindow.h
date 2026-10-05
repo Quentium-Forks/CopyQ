@@ -254,7 +254,7 @@ public:
 
     /// Used by config() command.
     QVariant config(const QVariantList &nameValue);
-    QString configDescription();
+    QString configDescription() const;
 
     QVariantMap actionData(int id) const;
     void setActionData(int id, const QVariantMap &data);
@@ -646,7 +646,7 @@ private:
     bool exportDataFrom(const QString &fileName, const QStringList &tabs, bool exportConfiguration, bool exportCommands, const Encryption::EncryptionKey &encryptionKey);
     bool exportDataV4(QDataStream *out, const QStringList &tabs, bool exportConfiguration, bool exportCommands);
     bool exportDataV5(QDataStream *out, const QStringList &tabs, bool exportConfiguration, bool exportCommands, const Encryption::EncryptionKey &encryptionKey);
-    QVariantMap exportTabData(const QString &tab, bool *ok);
+    QVariantMap exportTabData(const QString &tab, const Tabs &tabProps, bool *ok);
 
     bool canImport(const ImportSelection &importSelection);
     void importSelected(const ImportSelection &importSelection);

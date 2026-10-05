@@ -7,7 +7,11 @@
 #include <QDrag>
 #include <QItemSelectionModel>
 #include <QLoggingCategory>
+#include <QMenu>
 #include <QRegularExpression>
+#include <QScreen>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QTest>
 #include <QTimer>
 
@@ -85,9 +89,10 @@ bool matchesProperties(QObject *object, const QStringList &properties)
     for (auto it = properties.cbegin(); it != properties.cend(); ++it) {
         const QString key = it->section('=', 0, 0);
         const QString value = it->section('=', 1, 1);
-        if ( value.isEmpty() ) {
-            if ( object->objectName() != key && object->metaObject()->className() != key )
-                return false;
+        if ( value.isEmpty()
+             && object->objectName() != key
+             && object->metaObject()->className() != key ) {
+            return false;
         }
 
         const QVariant propValue = object->property(key.toUtf8());
@@ -141,7 +146,7 @@ public:
         Failed
     };
 
-    KeyClicker(QObject *parent)
+    explicit KeyClicker(QObject *parent)
         : QObject(parent)
     {
         for (const auto w : qApp->topLevelWidgets()) {
@@ -258,7 +263,7 @@ public:
                 return;
             }
             // Don't block while processing the events.
-            runAfterInterval(delay, [=](){
+            runAfterInterval(delay, [source, keys, widgetName, action](){
                 if (!checkEventTarget(source, keys, widgetName, "mouse"))
                     return;
 
@@ -314,7 +319,7 @@ public:
             const auto key = static_cast<uint>(shortcut[0].toCombined());
             const QPointer<QWidget> target = widget;
             // Avoid blocking on modal dialogs
-            runAfterInterval(0, [=](){
+            runAfterInterval(0, [target, widgetName, key](){
                 if (!target || !target->isVisible()) {
                     qCCritical(plugin) << "Target no longer valid:" << widgetName;
                     return;
@@ -336,7 +341,7 @@ public:
         m_expectedWidgetName = expectedWidgetName;
 
         // Don't stop when modal window is open.
-        runAfterInterval(delay, [=](){ keyClicks(keys, delay, retry); });
+        runAfterInterval(delay, [this, keys, delay, retry](){ keyClicks(keys, delay, retry); });
     }
 
     int status(bool forceRetrieve) {
@@ -467,7 +472,7 @@ QVariant ItemTestsLoader::scriptCallback(const QVariantList &arguments)
         const QString expectedWidgetName = arguments.value(1).toString();
         const QString keys = arguments.value(2).toString();
         const int delay = arguments.value(3).toInt();
-        const QRegularExpression re = QRegularExpression(
+        const auto re = QRegularExpression(
             QString(expectedWidgetName)
             .replace(QLatin1String("<"), QLatin1String(".*<.*"))
         );
@@ -477,6 +482,42 @@ QVariant ItemTestsLoader::scriptCallback(const QVariantList &arguments)
 
     if (cmd == "sendKeysStatus")
         return keyClicker()->status(arguments.value(1).toBool());
+
+    if (cmd == "popupMenuAtScreenEdge" || cmd == "menuFitsScreen") {
+        for (auto window : QApplication::topLevelWidgets()) {
+            auto menu = qobject_cast<QMenu*>(window);
+            if (menu && menu->objectName() == arguments.value(1).toString()) {
+                const auto screen = menu->screen()->geometry();
+                if (cmd == "popupMenuAtScreenEdge") {
+                    menu->popup(screen.bottomRight() - QPoint(8, 8));
+                    return {};
+                }
+                return menu->isVisible() && screen.contains(menu->geometry());
+            }
+        }
+        return {};
+    }
+
+    if (cmd == "dialogGeometry" || cmd == "resizeDialog") {
+        for (auto window : QApplication::topLevelWidgets()) {
+            if (window->isVisible() && window->objectName() == arguments.value(1).toString()) {
+                if (cmd == "resizeDialog") {
+                    window->resize(arguments.value(2).toInt(), arguments.value(3).toInt());
+                    return {};
+                }
+                const auto area = window->findChild<QScrollArea*>();
+                if (area) {
+                    return QVariantMap{
+                        {"width", window->width()},
+                        {"height", window->height()},
+                        {"horizontalScrollMaximum", area->horizontalScrollBar()->maximum()},
+                        {"verticalScrollMaximum", area->verticalScrollBar()->maximum()},
+                    };
+                }
+            }
+        }
+        return {};
+    }
 
     return QStringLiteral("Unexpected command: %1").arg(cmd);
 }

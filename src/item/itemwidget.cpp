@@ -77,7 +77,7 @@ bool ItemWidget::filterMouseEvents(QTextEdit *edit, QEvent *event)
 
     case QEvent::MouseButtonPress:
     case QEvent::MouseButtonDblClick: {
-        QMouseEvent *e = static_cast<QMouseEvent*>(event);
+        auto *e = static_cast<QMouseEvent*>(event);
 
         if ( !canMouseInteract(*e) )
             allowMouseInteraction = false;
@@ -88,7 +88,7 @@ bool ItemWidget::filterMouseEvents(QTextEdit *edit, QEvent *event)
     }
 
     case QEvent::MouseMove: {
-        QMouseEvent *e = static_cast<QMouseEvent*>(event);
+        auto *e = static_cast<QMouseEvent*>(event);
 
         if ( !canMouseInteract(*e) )
             allowMouseInteraction = false;
@@ -97,7 +97,7 @@ bool ItemWidget::filterMouseEvents(QTextEdit *edit, QEvent *event)
     }
 
     case QEvent::MouseButtonRelease: {
-        QMouseEvent *e = static_cast<QMouseEvent*>(event);
+        auto *e = static_cast<QMouseEvent*>(event);
 
         if ( canMouseInteract(*e) && edit->textCursor().hasSelection() )
             edit->copy();
@@ -197,6 +197,7 @@ bool ItemSaverInterface::canMoveItems(const QList<QModelIndex> &)
 
 void ItemSaverInterface::itemsRemovedByUser(const QList<QPersistentModelIndex> &)
 {
+    /* No-op default: subclasses override to handle user-initiated removal */
 }
 
 QVariantMap ItemSaverInterface::copyItem(const QAbstractItemModel &, const QVariantMap &itemData)
@@ -206,6 +207,7 @@ QVariantMap ItemSaverInterface::copyItem(const QAbstractItemModel &, const QVari
 
 void ItemSaverInterface::setFocus(bool)
 {
+    /* No-op default: subclasses override to handle focus changes */
 }
 
 ItemWidget *ItemLoaderInterface::create(const QVariantMap &, QWidget *, bool) const

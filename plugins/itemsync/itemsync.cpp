@@ -469,9 +469,7 @@ void ItemSyncSaver::itemsRemovedByUser(const QList<QPersistentModelIndex> &index
     if ( m_tabPath.isEmpty() )
         return;
 
-    // Remove unneeded files (remaining records in the hash map).
-    for (const auto &index : indexList)
-        FileWatcher::removeFilesForRemovedIndex(m_tabPath, index);
+    FileWatcher::removeFilesForRemovedIndexes(m_tabPath, indexList);
 }
 
 QVariantMap ItemSyncSaver::copyItem(const QAbstractItemModel &, const QVariantMap &itemData)
@@ -616,7 +614,7 @@ void ItemSyncLoader::loadSettings(const QSettings &settings)
 QWidget *ItemSyncLoader::createSettingsWidget(QWidget *parent)
 {
     ui.reset(new Ui::ItemSyncSettings);
-    QWidget *w = new QWidget(parent);
+    auto *w = new QWidget(parent);
     ui->setupUi(w);
 
     // Init tab sync path table.

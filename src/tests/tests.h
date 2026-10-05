@@ -71,6 +71,8 @@ private slots:
     void commandToggleConfig();
 
     void commandDialog();
+    void commandDialogFitsContents();
+    void commandDialogRestoreGeometry();
     void commandDialogCloseOnDisconnect();
 
     void commandMenuItems();
@@ -228,6 +230,7 @@ private slots:
     void trayPaste();
     void trayShowHideAction();
     void trayMenuToggleRapid();
+    void trayMenuFitsScreen();
 
     void pasteNext();
 

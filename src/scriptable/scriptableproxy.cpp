@@ -81,6 +81,7 @@ const quint32 serializedFunctionCallMagicNumber = 0x58746908;
 const quint32 serializedFunctionCallVersion = 2;
 constexpr bool hasPriority = false;
 constexpr auto dataStreamVersion = QDataStream::Qt_6_2;
+constexpr int maxArgumentCount = 9;
 
 void registerMetaTypes() {
     static bool registered = false;
@@ -441,7 +442,7 @@ QWidget *label(Qt::Orientation orientation, const QString &name, QWidget *w)
 
         parent->layout()->addItem(layout);
 
-        QLabel *label = new QLabel(name + ":", parent);
+        auto *label = new QLabel(name + ":", parent);
         label->setBuddy(w);
         layout->addWidget(label);
         layout->addWidget(w, 1);
@@ -479,7 +480,7 @@ QWidget *createDateTimeEdit(
 
 void installShortcutToCloseDialog(QDialog *dialog, QWidget *shortcutParent, int shortcut)
 {
-    QShortcut *s = new QShortcut(QKeySequence(shortcut), shortcutParent);
+    auto *s = new QShortcut(QKeySequence(shortcut), shortcutParent);
     QObject::connect(s, &QShortcut::activated, dialog, &QDialog::accept);
     QObject::connect(s, &QShortcut::activatedAmbiguously, dialog, &QDialog::accept);
 }
@@ -537,7 +538,7 @@ QLineEdit *createLineEdit(const QVariant &value, QWidget *parent)
 
 QWidget *createFileNameEdit(const QString &name, const QString &path, QWidget *parent)
 {
-    QWidget *w = new QWidget(parent);
+    auto *w = new QWidget(parent);
     parent->layout()->addWidget(w);
 
     auto layout = new QHBoxLayout(w);
@@ -546,9 +547,9 @@ QWidget *createFileNameEdit(const QString &name, const QString &path, QWidget *p
     QLineEdit *lineEdit = createLineEdit(path, w);
     lineEdit->setProperty(propertyWidgetName, name);
 
-    QPushButton *browseButton = new QPushButton("...");
+    auto *browseButton = new QPushButton("...");
 
-    FileDialog *dialog = new FileDialog(w, name, path);
+    auto *dialog = new FileDialog(w, name, path);
     QObject::connect( browseButton, &QAbstractButton::clicked,
                       dialog, &FileDialog::exec );
     QObject::connect( dialog, &FileDialog::fileSelected,
@@ -648,7 +649,7 @@ void ScriptableProxy::callFunction(const QByteArray &serializedFunctionCall)
     ++m_functionCallStack;
     auto t = new QTimer(this);
     t->setSingleShot(true);
-    QObject::connect( t, &QTimer::timeout, this, [=]() {
+    QObject::connect( t, &QTimer::timeout, this, [this, serializedFunctionCall, t]() {
         const auto result = callFunctionHelper(serializedFunctionCall);
         emit sendMessage(result, CommandFunctionCallReturnValue);
         t->deleteLater();
@@ -712,6 +713,12 @@ QByteArray ScriptableProxy::callFunctionHelper(const QByteArray &serializedFunct
         }
     }
 
+    if (arguments.size() > maxArgumentCount) {
+        log( QStringLiteral("Invalid argument count (%1): %2")
+                .arg(arguments.size()).arg(slotName), LogError );
+        return QByteArray();
+    }
+
     const auto slotIndex = metaObject()->indexOfSlot(slotName);
     if (slotIndex == -1) {
         log("Failed to find scriptable proxy slot: " + slotName, LogError);
@@ -722,14 +729,14 @@ QByteArray ScriptableProxy::callFunctionHelper(const QByteArray &serializedFunct
     const auto metaMethod = metaObject()->method(slotIndex);
     const auto typeId = metaMethod.returnType();
 
-    QGenericArgument args[9];
+    QGenericArgument args[maxArgumentCount];
     for (int i = 0; i < arguments.size(); ++i) {
         auto &value = arguments[i];
         const int argumentTypeId = metaMethod.parameterType(i);
         if (argumentTypeId == QMetaType::QVariant) {
-            args[i] = QGenericArgument( "QVariant", static_cast<void*>(value.data()) );
+            args[i] = QGenericArgument( "QVariant", value.data() );
         } else if ( value.userType() == argumentTypeId ) {
-            args[i] = QGenericArgument( value.typeName(), static_cast<void*>(value.data()) );
+            args[i] = QGenericArgument( value.typeName(), value.data() );
         } else {
             log( QString("Bad argument type (at index %1) for scriptable proxy slot: %2")
                  .arg(i)
@@ -751,8 +758,8 @@ QByteArray ScriptableProxy::callFunctionHelper(const QByteArray &serializedFunct
         Q_ASSERT(metaType.hasRegisteredDataStreamOperators());
         returnValue = QVariant(metaType, nullptr);
         const auto genericReturnValue = returnValue.isValid()
-                ? QGenericReturnArgument( returnValue.typeName(), static_cast<void*>(returnValue.data()) )
-                : QGenericReturnArgument( "QVariant", static_cast<void*>(returnValue.data()) );
+                ? QGenericReturnArgument( returnValue.typeName(), returnValue.data() )
+                : QGenericReturnArgument( "QVariant", returnValue.data() );
 
         called = metaMethod.invoke(
                 this, genericReturnValue,
@@ -1199,7 +1206,7 @@ int ScriptableProxy::menuItems(const VariantMapList &items)
     menu.setObjectName("CustomMenu");
     menu.setRowIndexFromOne( AppConfig().option<Config::row_index_from_one>() );
 
-    const auto addMenuItems = [&](const QString &searchText) {
+    const auto addMenuItems = [&menu, &items](const QString &searchText) {
         menu.clearClipboardItems();
         for (const QVariantMap &data : items.items) {
             const QString text = getTextData(data);
@@ -1649,7 +1656,7 @@ void ScriptableProxy::selectionDeselectSelection(int id, int toDeselectId)
 
     selectionRemoveIf(
         &selection.indexes,
-        [&](const QPersistentModelIndex &index){
+        [&deselection](const QPersistentModelIndex &index){
             return !index.isValid() || deselection.indexes.contains(index);
         });
     m_selections[id] = selection;
@@ -1915,6 +1922,18 @@ int ScriptableProxy::inputDialog(const NamedValueList &values)
             widgets.append( createWidget(value.name, value.value, &inputDialog) );
     }
 
+    if ( !styleSheet.isEmpty() )
+        dialog.setStyleSheet(styleSheet);
+
+    auto buttons = new QDialogButtonBox(
+                QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, &dialog);
+    QObject::connect( buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept );
+    QObject::connect( buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject );
+    dialog.layout()->addWidget(buttons);
+
+    // Use the contents as the default size before restoring or overriding geometry.
+    dialog.adjustSize();
+
     if ( !dialogTitle.isNull() ) {
         dialog.setWindowTitle(dialogTitle);
         dialog.setObjectName(QStringLiteral("dialog_") + dialogTitle);
@@ -1937,15 +1956,6 @@ int ScriptableProxy::inputDialog(const NamedValueList &values)
 
     if (geometry.x() >= 0 && geometry.y() >= 0)
         dialog.move(geometry.topLeft());
-
-    if ( !styleSheet.isEmpty() )
-        dialog.setStyleSheet(styleSheet);
-
-    auto buttons = new QDialogButtonBox(
-                QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, &dialog);
-    QObject::connect( buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept );
-    QObject::connect( buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject );
-    dialog.layout()->addWidget(buttons);
 
     installShortcutToCloseDialog(&dialog, &dialog, QKeyCombination(Qt::ControlModifier, Qt::Key_Enter).toCombined());
     installShortcutToCloseDialog(&dialog, &dialog, QKeyCombination(Qt::ControlModifier, Qt::Key_Return).toCombined());
@@ -2409,7 +2419,7 @@ QString ScriptableProxy::stats()
 
         visited.insert(addressObj.obj);
 
-        const QString className = QString::fromUtf8(addressObj.obj->metaObject()->className());
+        const auto className = QString::fromUtf8(addressObj.obj->metaObject()->className());
         stats[className] += 1;
 
         const QString objectName = addressObj.obj->objectName();
@@ -2450,7 +2460,7 @@ QString ScriptableProxy::stats()
 
         for (const QObject *obj : addressObj.obj->findChildren<QObject*>(QString(), Qt::FindDirectChildrenOnly))
             toVisit.append(AddressObj{address, obj});
-    };
+    }
 
     QStringList result;
     result.reserve( stats.size() + 1 );
@@ -2632,7 +2642,7 @@ QVariant ScriptableProxy::waitForFunctionCallFinished(int functionCallId)
 
     QEventLoop loop;
     connect(this, &ScriptableProxy::functionCallFinished, &loop,
-            [&](int receivedFunctionCallId, const QVariant &returnValue) {
+            [&functionCallId, &result, &loop](int receivedFunctionCallId, const QVariant &returnValue) {
                 if (receivedFunctionCallId != functionCallId)
                     return;
                 result = returnValue;
@@ -2661,18 +2671,14 @@ bool ScriptableProxy::getSelectionData()
 void setClipboardMonitorRunning(bool running)
 {
     QSettings settings(
-          QSettings::IniFormat,
-          QSettings::UserScope,
-          QCoreApplication::organizationName(),
-          QCoreApplication::applicationName() + "-monitor");
+          stateFilePath("-monitor.ini"),
+          QSettings::IniFormat);
     settings.setValue(QStringLiteral("running"), running);
 }
 bool isClipboardMonitorRunning()
 {
     const QSettings settings(
-          QSettings::IniFormat,
-          QSettings::UserScope,
-          QCoreApplication::organizationName(),
-          QCoreApplication::applicationName() + "-monitor");
+          stateFilePath("-monitor.ini"),
+          QSettings::IniFormat);
     return settings.value(QStringLiteral("running")).toBool();
 }

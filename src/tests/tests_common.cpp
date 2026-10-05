@@ -59,6 +59,7 @@ bool testStderr(
         plain("Deleting keychain failed"),
 
         // Wayland (Linux)
+        plain("X11 selection is not supported, disabling."),
         plain("Wayland does not support QWindow::requestActivate()"),
         plain("Unexpected wl_keyboard.enter event"),
         plain("The compositor sent a wl_pointer.enter"),
@@ -106,7 +107,7 @@ bool testStderr(
         regex(R"(Could not remove our own lock file .* maybe permissions changed meanwhile)"),
     };
 
-    const QString output = QString::fromUtf8(stderrData);
+    const auto output = QString::fromUtf8(stderrData);
     QRegularExpressionMatchIterator it = reFailure.globalMatch(output);
     bool result = true;
     const bool isIgnoreReValid = !ignoreRe.pattern().isEmpty();

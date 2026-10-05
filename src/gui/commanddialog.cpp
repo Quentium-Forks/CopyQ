@@ -349,7 +349,7 @@ Command CommandDialog::currentCommand(int row) const
 
     QWidget *w = ui->itemOrderListCommands->widget(row);
     if (w) {
-        const CommandWidget *commandWidget = qobject_cast<const CommandWidget *>(w);
+        const auto *commandWidget = qobject_cast<const CommandWidget *>(w);
         Q_ASSERT(commandWidget);
         c = commandWidget->command();
     } else {
@@ -408,7 +408,7 @@ Commands CommandDialog::selectedCommands() const
     return commandsToSave;
 }
 
-QString CommandDialog::serializeSelectedCommands()
+QString CommandDialog::serializeSelectedCommands() const
 {
     const Commands commands = selectedCommands();
     if ( commands.isEmpty() )
@@ -429,7 +429,7 @@ void CommandDialog::updateIcon(int row)
     ui->itemOrderListCommands->setItemIcon(row, icon);
 }
 
-QString CommandDialog::commandsToPaste()
+QString CommandDialog::commandsToPaste() const
 {
     auto clipboard = platformNativeInterface()->clipboard();
     const QMimeData *data = clipboard->mimeData(ClipboardMode::Clipboard);

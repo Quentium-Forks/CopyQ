@@ -35,8 +35,8 @@ public:
     void removeTab(int index) override;
     void moveTab(int from, int to) override;
 
-    void updateCollapsedTabs(QList<QString> *) const override {}
-    void setCollapsedTabs(const QList<QString> &) override {}
+    void updateCollapsedTabs(QList<QString> *) const override { /* Tab collapsing not supported in this implementation */ }
+    void setCollapsedTabs(const QList<QString> &) override { /* Tab collapsing not supported in this implementation */ }
 
     void updateTabIcons(const QHash<QString, QString> &tabIcons) override;
 
@@ -45,7 +45,7 @@ public:
 
     void setCurrentTab(int index) override;
 
-    virtual void adjustSize() override;
+    void adjustSize() override;
 
 signals:
     void tabBarMenuRequested(const QPoint &pos, int tab);

@@ -92,9 +92,8 @@ void loadCommand(const QSettings &settings, Commands *commands)
             c.isGlobalShortcut = settings.value(key).toBool();
         } else if (key == QLatin1String("Remove")) {
             c.remove = settings.value(key).toBool();
-        } else if (key == QLatin1String("Ignore")) {
-            if (settings.value(key).toBool())
-                c.remove = c.automatic = true;
+        } else if (key == QLatin1String("Ignore") && settings.value(key).toBool()) {
+            c.remove = c.automatic = true;
         }
     }
 
@@ -173,13 +172,13 @@ Commands importCommands(QSettings *settings)
 
 Commands loadAllCommands()
 {
-    const QString commandConfigPath = getConfigurationFilePath("-commands.ini");
+    const QString commandConfigPath = configurationFilePath("-commands.ini");
     return importCommandsFromFile(commandConfigPath);
 }
 
 void saveCommands(const Commands &commands)
 {
-    Settings settings(getConfigurationFilePath("-commands.ini"));
+    Settings settings(configurationFilePath("-commands.ini"));
     saveCommands(commands, &settings);
 }
 

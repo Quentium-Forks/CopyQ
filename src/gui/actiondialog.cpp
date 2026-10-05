@@ -23,7 +23,7 @@ Q_LOGGING_CATEGORY(logCategory, "copyq.actiondialog")
 
 void initFormatComboBox(QComboBox *combo, const QStringList &additionalFormats = QStringList())
 {
-    QStringList formats = QStringList() << QString() << QString(mimeText) << additionalFormats;
+    auto formats = QStringList() << QString() << QString(mimeText) << additionalFormats;
     formats.removeDuplicates();
     combo->clear();
     combo->addItems(formats);
@@ -129,7 +129,7 @@ void ActionDialog::restoreHistory()
 
 const QString ActionDialog::dataFilename() const
 {
-    return getConfigurationFilePath("_cmds.dat");
+    return stateFilePath("_cmds.dat");
 }
 
 void ActionDialog::saveHistory()

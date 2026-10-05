@@ -100,7 +100,7 @@ void cleanUpLogFilesTimer()
     timer->setInterval(cleanUpIntervalMs);
     timer->start();
 
-    auto callback = [=](){ dropLogsToFileCountAndSize(maxFiles, maxLogSize); };
+    auto callback = [maxFiles, maxLogSize](){ dropLogsToFileCountAndSize(maxFiles, maxLogSize); };
     QTimer::singleShot(startIntervalMs, qApp, callback);
     QObject::connect(timer, &QTimer::timeout, qApp, callback);
 }
@@ -154,6 +154,8 @@ ClipboardServer::ClipboardServer(QApplication *app, const QString &sessionName)
     QApplication::setQuitOnLastWindowClosed(false);
 
     ensureSettingsDirectoryExists();
+    ensureStateDirectoryExists();
+    migrateDataFiles();
 
     m_sharedData->itemFactory = new ItemFactory(m_sharedData, this);
     m_sharedData->notifications = new NotificationDaemon(this);
@@ -209,7 +211,7 @@ ClipboardServer::ClipboardServer(QApplication *app, const QString &sessionName)
     m_ignoreKeysTimer.setInterval(100);
     m_ignoreKeysTimer.setSingleShot(true);
 
-    initSingleShotTimer(&m_timerClearUnsentActionData, 2000, this, [&]() {
+    initSingleShotTimer(&m_timerClearUnsentActionData, 2000, this, [this]() {
         m_actionDataToSend.clear();
     });
 
@@ -425,7 +427,7 @@ bool ClipboardServer::askToQuit()
         QTimer timerCheckRunningCommands;
         timerCheckRunningCommands.setInterval(1000);
         connect( &timerCheckRunningCommands, &QTimer::timeout,
-                 exitButton, [&]() {
+                 exitButton, [this, exitButton]() {
                     if ( !hasRunningCommands() )
                         exitButton->click();
                  });
@@ -717,8 +719,8 @@ bool ClipboardServer::eventFilter(QObject *object, QEvent *ev)
 
         // Close menu on Escape key and give focus back to search edit or browser.
         if (type == QEvent::KeyPress) {
-            QKeyEvent *keyevent = static_cast<QKeyEvent *>(ev);
-            QMenu *menu = qobject_cast<QMenu*>(object);
+            auto *keyevent = static_cast<QKeyEvent *>(ev);
+            auto *menu = qobject_cast<QMenu*>(object);
             if (menu && keyevent->key() == Qt::Key_Escape) {
                 menu->close();
                 if (m_wnd->browseMode())
@@ -733,7 +735,7 @@ bool ClipboardServer::eventFilter(QObject *object, QEvent *ev)
                         .value<Qt::TextInteractionFlags>()
                         .testFlag(Qt::TextSelectableByKeyboard)) )
         {
-            QKeyEvent *keyevent = static_cast<QKeyEvent *>(ev);
+            auto *keyevent = static_cast<QKeyEvent *>(ev);
             if ( keyevent->key() == Qt::Key_Left
                  || keyevent->key() == Qt::Key_Right
                  || keyevent->key() == Qt::Key_Up
@@ -746,7 +748,7 @@ bool ClipboardServer::eventFilter(QObject *object, QEvent *ev)
     } else if (type == QEvent::Paint) {
         setActivePaintDevice(object);
     } else if (type == QEvent::FontChange) {
-        QTextEdit *editor = qobject_cast<QTextEdit*>(object);
+        auto *editor = qobject_cast<QTextEdit*>(object);
         if (editor)
             setTabWidth(editor, m_textTabSize);
     } else if ( type == QEvent::ApplicationStateChange && m_saveOnDeactivate ) {
