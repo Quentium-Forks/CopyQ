@@ -3,7 +3,7 @@ Version:    17.0.0.0
 Release:    1%{?dist}
 Summary:    Advanced clipboard manager
 
-License:    GPLv3+
+License:    GPL-3.0-or-later
 URL:        https://hluk.github.io/CopyQ/
 Source0:    %{name}-%{version}.tar.gz
 
